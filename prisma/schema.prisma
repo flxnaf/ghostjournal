@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Media
+  audioUrl      String?
+  photoUrls     String? // JSON string of photo URLs array
+  
+  // AI Models
+  voiceModelId  String?
+  personalityData String? // JSON
+  chromaCollectionId String?
+  
+  // Fetch.ai
+  fetchAgentId  String?
+  
+  // Metadata
+  name          String?
+  email         String?
+  
+  // Relations
+  memories      Memory[]
+  conversations Conversation[]
+}
+
+model Memory {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  content   String
+  embedding String   // Store embedding ID from Chroma
+  category  String?  // stories, habits, reactions, etc.
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      String   // user or assistant
+  content   String
+  audioUrl  String?
+}
+
