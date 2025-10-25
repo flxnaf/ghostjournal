@@ -15,6 +15,11 @@ const nextConfig = {
       config.externals.push('chromadb');
     }
     
+    // Exclude MediaPipe from server-side bundling (client-only)
+    if (isServer) {
+      config.externals.push('@mediapipe/face_mesh', '@mediapipe/camera_utils');
+    }
+    
     return config;
   },
   // Mark chromadb as server-only

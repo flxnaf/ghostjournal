@@ -3,6 +3,8 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
+import { useFaceMesh } from '@/lib/hooks/useFaceMesh'
+import { applyMediapipeToMockFace } from '@/lib/applyMediapipeToMock'
 
 interface UploaderProps {
   audioBlob: Blob
@@ -21,6 +23,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
   const [photos, setPhotos] = useState<(File | null)[]>([null, null, null, null, null])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [processingFace, setProcessingFace] = useState(false)
   const [contexts, setContexts] = useState({
     story: '',
     habit: '',
@@ -32,6 +35,8 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  
+  const { processFaceImages, isLoading: isFaceMeshLoading, isReady } = useFaceMesh()
 
   const startCamera = async () => {
     console.log('🎥 Starting camera...')
@@ -131,33 +136,118 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
     }
 
     setUploading(true)
+    setProcessingFace(true)
     setProgress(0)
 
     try {
-      // Create FormData with photos and contexts only (user already exists)
-      const formData = new FormData()
+      console.log('🎭 Step 1: Extracting face landmarks with MediaPipe...')
+      console.log(`   Processing ${photos.filter(p => p !== null).length} photos`)
+      console.log(`   FaceMesh hook ready: ${isReady}`)
+      console.log(`   FaceMesh hook loading: ${isFaceMeshLoading}`)
       
-      photos.forEach((photo, idx) => {
-        if (photo) {
-          formData.append(`photo${idx}`, photo)
-        }
+      // Check if MediaPipe is ready
+      if (!isReady) {
+        console.error('❌ MediaPipe is not loaded yet!')
+        alert('Face detection system is still loading. Please wait a moment and try again.')
+        throw new Error('MediaPipe not ready')
+      }
+      
+      // Extract face landmarks from photos using MediaPipe
+      const validPhotos = photos.filter(p => p !== null) as File[]
+      console.log('   Calling processFaceImages with', validPhotos.length, 'photos...')
+      
+      const mediapipeResult = await processFaceImages(validPhotos)
+      
+      console.log('   processFaceImages returned:', mediapipeResult ? 'SUCCESS' : 'NULL')
+      
+      if (!mediapipeResult) {
+        console.error('❌ MediaPipe failed - no result returned')
+        alert('Could not detect your face in the photos. Please:\n1. Make sure your face is clearly visible\n2. Use well-lit photos\n3. Face the camera directly')
+        throw new Error('MediaPipe face detection failed')
+      }
+
+      const { landmarks, contours } = mediapipeResult
+
+      console.log('✅ Face landmarks extracted!')
+      console.log(`   Detected ${landmarks ? landmarks.length : 'NO'} raw MediaPipe landmarks`)
+      console.log(`   Generated ${contours ? contours.length : 'NO'} contours from ${validPhotos.length} photos`)
+      
+      if (!landmarks || landmarks.length < 468) {
+        console.error(`❌ Invalid MediaPipe data - expected 468 landmarks, got ${landmarks?.length || 0}`)
+        alert('Face detection incomplete. Please try again with clearer photos.')
+        throw new Error('Invalid MediaPipe landmarks')
+      }
+      
+      console.log('   Sample landmark (point 10):', landmarks[10])
+      console.log('   Sample landmark (point 151):', landmarks[151])
+      
+      console.log('🎨 Step 2: Applying real proportions to 2.5D face template...')
+      
+      // Fetch the mock face template
+      const mockResponse = await fetch('/api/mock-face')
+      const { contours: mockFaceContours } = await mockResponse.json()
+      console.log(`   Fetched ${mockFaceContours.length} mock face contours`)
+      
+      // CRITICAL DEBUG: Check landmarks before applying
+      console.log('📋 BEFORE applying to mock:')
+      console.log(`   Raw landmarks count: ${landmarks.length}`)
+      console.log(`   Landmark 10 (forehead):`, landmarks[10])
+      console.log(`   Landmark 151 (top head):`, landmarks[151])
+      console.log(`   Landmark 133 (left eye):`, landmarks[133])
+      console.log(`   Landmark 362 (right eye):`, landmarks[362])
+      
+      // Apply MediaPipe measurements to mock face structure (using RAW landmarks!)
+      console.log('   🔄 Calling applyMediapipeToMockFace...')
+      
+      let personalizedFace
+      try {
+        personalizedFace = applyMediapipeToMockFace(landmarks, mockFaceContours)
+        console.log('   ✅ applyMediapipeToMockFace completed without errors')
+      } catch (error) {
+        console.error('   ❌ applyMediapipeToMockFace FAILED:', error)
+        console.error('   Error stack:', (error as Error).stack)
+        throw error
+      }
+      
+      console.log('📋 AFTER applying to mock:')
+      console.log(`   Output: ${personalizedFace.length} contours`)
+      
+      const jawline = personalizedFace.find(c => c.name === 'jawline')
+      const leftEye = personalizedFace.find(c => c.name === 'left_eye_outline')
+      const hairFront = personalizedFace.find(c => c.name === 'hair_front')
+      
+      if (jawline) {
+        const jawWidth = Math.max(...jawline.points.map(p => Math.abs(p[0]))) * 2
+        console.log(`   Jawline width: ${jawWidth.toFixed(3)} (should NOT be 0.700 for everyone!)`)
+        console.log(`   Sample jaw point:`, jawline.points[0])
+      }
+      
+      if (leftEye) {
+        console.log(`   Left eye position:`, leftEye.points[0])
+      }
+      
+      if (hairFront) {
+        const topHairY = Math.max(...hairFront.points.map(p => p[1]))
+        console.log(`   Top hair Y: ${topHairY.toFixed(3)} (higher = spikier)`)
+      }
+      
+      console.log('✅ Created personalized 2.5D face model!')
+      
+      setProcessingFace(false)
+      setProgress(50)
+
+      console.log('📤 Step 3: Uploading face data and contexts...')
+
+      // Send personalized face contours and contexts to API
+      const response = await axios.post('/api/update-user', {
+        userId,
+        faceContours: personalizedFace,
+        contexts
+      }, {
+        headers: { 'Content-Type': 'application/json' }
       })
 
-      formData.append('contexts', JSON.stringify(contexts))
-      formData.append('userId', userId) // Pass existing userId
-
-      // Upload photos and contexts
-      const response = await axios.post('/api/update-user', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = progressEvent.total 
-            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            : 0
-          setProgress(percentCompleted)
-        }
-      })
-
-      console.log('✅ Photos and context uploaded!')
+      console.log('✅ Face model and context uploaded!')
       setProgress(100)
       
       // Brief pause to show completion, then proceed
@@ -169,8 +259,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
       console.error('❌ Upload error:', error)
       console.error('   Error response:', error.response?.data)
       console.error('   Error status:', error.response?.status)
-      alert(`Failed to upload: ${error.response?.data?.error || error.message}. Please try again.`)
+      alert(`Failed to process: ${error.response?.data?.error || error.message}. Please try again.`)
       setUploading(false)
+      setProcessingFace(false)
     }
   }
 
@@ -446,7 +537,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
                    hover:bg-white hover:text-black transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {uploading ? 'Creating...' : 'I Consent - Create My Clone'}
+          {processingFace ? '🎭 Analyzing Your Face...' : (uploading ? '📤 Uploading...' : 'I Consent - Create My Clone')}
         </motion.button>
       </div>
 

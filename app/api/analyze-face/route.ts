@@ -11,40 +11,45 @@ const prisma = new PrismaClient()
  * Apply feature descriptions to contours (if Claude provided text description)
  */
 function applyFeatureDescriptions(contours: FaceContour[], description: string): FaceContour[] {
-  console.log('🎨 Applying feature descriptions to contours')
+  console.log('🎨 ==========================================')
+  console.log('🎨 APPLYING FEATURE DESCRIPTIONS TO FACE')
+  console.log('🎨 Description:', description.substring(0, 200))
+  console.log('🎨 ==========================================')
   
   const desc = description.toLowerCase()
   const modifiedContours = JSON.parse(JSON.stringify(contours)) // Deep clone
   
-  // Detect wavy/curly hair and add wave patterns
+  // Detect wavy/curly hair and add wave patterns (MORE DRAMATIC)
   if (desc.includes('wavy') || desc.includes('curly') || desc.includes('curled')) {
-    console.log('  ➡️ Adding wavy hair pattern')
+    console.log('  ➡️ 🌊 APPLYING: Wavy/curly hair pattern')
     modifiedContours.forEach((contour: FaceContour) => {
       if (contour.name.includes('hair')) {
-        contour.points = contour.points.map(([x, y, z], idx) => {
-          // Add sine wave to x-coordinate for wavy effect
-          const wave = Math.sin(idx * 0.8) * 0.04
-          return [x + wave, y, z]
+        contour.points = contour.points.map(([x, y, z]: [number, number, number], idx: number) => {
+          // Add BIGGER sine wave for visible wavy effect
+          const wave = Math.sin(idx * 0.8) * 0.08  // Doubled from 0.04
+          return [x + wave, y, z] as [number, number, number]
         })
       }
     })
+  } else {
+    console.log('  ℹ️  Hair: straight/default (no wavy pattern detected)')
   }
   
-  // Detect round face and adjust jawline
+  // Detect round face and adjust jawline (MORE DRAMATIC)
   if (desc.includes('oval') || desc.includes('round')) {
-    console.log('  ➡️ Adjusting for round/oval face shape')
+    console.log('  ➡️ 🔵 APPLYING: Round/oval face shape (softer jawline)')
     const jawline = modifiedContours.find((c: FaceContour) => c.name === 'jawline')
     if (jawline) {
-      jawline.points = jawline.points.map(([x, y, z]) => [x * 0.95, y, z * 0.85]) // Softer jawline
+      jawline.points = jawline.points.map(([x, y, z]: [number, number, number]) => [x * 0.85, y, z * 0.7] as [number, number, number]) // MUCH softer jawline
     }
   }
   
-  // Detect angular face and sharpen jawline
+  // Detect angular face and sharpen jawline (MORE DRAMATIC)
   if (desc.includes('angular') || desc.includes('defined') || desc.includes('square')) {
-    console.log('  ➡️ Sharpening jawline for angular face')
+    console.log('  ➡️ 🔷 APPLYING: Angular face (sharper jawline)')
     const jawline = modifiedContours.find((c: FaceContour) => c.name === 'jawline')
     if (jawline) {
-      jawline.points = jawline.points.map(([x, y, z]) => [x * 1.05, y, z * 1.15]) // Sharper jawline
+      jawline.points = jawline.points.map(([x, y, z]: [number, number, number]) => [x * 1.15, y, z * 1.3] as [number, number, number]) // MUCH sharper jawline
     }
   }
   
@@ -53,7 +58,7 @@ function applyFeatureDescriptions(contours: FaceContour[], description: string):
     console.log('  ➡️ Enlarging mouth for full lips')
     const mouth = modifiedContours.find((c: FaceContour) => c.name === 'mouth_outline')
     if (mouth) {
-      mouth.points = mouth.points.map(([x, y, z]) => [x * 1.1, y, z * 1.1]) // Larger mouth
+      mouth.points = mouth.points.map(([x, y, z]: [number, number, number]) => [x * 1.1, y, z * 1.1] as [number, number, number]) // Larger mouth
     }
   }
   
@@ -63,10 +68,10 @@ function applyFeatureDescriptions(contours: FaceContour[], description: string):
     ;['left_eyebrow', 'right_eyebrow'].forEach(name => {
       const brow = modifiedContours.find((c: FaceContour) => c.name === name)
       if (brow) {
-        brow.points = brow.points.map(([x, y, z], idx) => {
+        brow.points = brow.points.map(([x, y, z]: [number, number, number], idx: number) => {
           // Add arch in the middle
           const archBoost = idx === Math.floor(brow.points.length / 2) ? 0.03 : 0
-          return [x, y + archBoost, z]
+          return [x, y + archBoost, z] as [number, number, number]
         })
       }
     })
@@ -79,9 +84,9 @@ function applyFeatureDescriptions(contours: FaceContour[], description: string):
       const eye = modifiedContours.find((c: FaceContour) => c.name === name)
       if (eye) {
         // Lower the top points slightly
-        eye.points = eye.points.map(([x, y, z], idx) => {
-          if (idx >= 1 && idx <= 3) return [x, y - 0.02, z] // Lower upper eyelid
-          return [x, y, z]
+        eye.points = eye.points.map(([x, y, z]: [number, number, number], idx: number) => {
+          if (idx >= 1 && idx <= 3) return [x, y - 0.02, z] as [number, number, number] // Lower upper eyelid
+          return [x, y, z] as [number, number, number]
         })
       }
     })
@@ -92,7 +97,7 @@ function applyFeatureDescriptions(contours: FaceContour[], description: string):
     console.log('  ➡️ Widening nose')
     const noseTip = modifiedContours.find((c: FaceContour) => c.name === 'nose_tip')
     if (noseTip) {
-      noseTip.points = noseTip.points.map(([x, y, z]) => [x * 1.15, y, z])
+      noseTip.points = noseTip.points.map(([x, y, z]: [number, number, number]) => [x * 1.15, y, z] as [number, number, number])
     }
   }
   
@@ -100,7 +105,7 @@ function applyFeatureDescriptions(contours: FaceContour[], description: string):
     console.log('  ➡️ Narrowing nose')
     const noseTip = modifiedContours.find((c: FaceContour) => c.name === 'nose_tip')
     if (noseTip) {
-      noseTip.points = noseTip.points.map(([x, y, z]) => [x * 0.85, y, z])
+      noseTip.points = noseTip.points.map(([x, y, z]: [number, number, number]) => [x * 0.85, y, z] as [number, number, number])
     }
   }
   
@@ -110,10 +115,14 @@ function applyFeatureDescriptions(contours: FaceContour[], description: string):
     ;['left_cheek', 'right_cheek'].forEach(name => {
       const cheek = modifiedContours.find((c: FaceContour) => c.name === name)
       if (cheek) {
-        cheek.points = cheek.points.map(([x, y, z]) => [x, y, z * 1.1]) // Push out z-depth
+        cheek.points = cheek.points.map(([x, y, z]: [number, number, number]) => [x, y, z * 1.1] as [number, number, number]) // Push out z-depth
       }
     })
   }
+  
+  console.log('🎨 ==========================================')
+  console.log('🎨 FEATURE MODIFICATIONS COMPLETE')
+  console.log('🎨 ==========================================')
   
   return modifiedContours
 }
@@ -139,12 +148,12 @@ async function generateCustomFaceFromImage(buffer: Buffer): Promise<FaceContour[
     // Apply subtle variations based on image properties
     return mockContours.map(contour => ({
       ...contour,
-      points: contour.points.map(([x, y, z]) => {
+      points: contour.points.map(([x, y, z]: [number, number, number]) => {
         // Apply small random-like variations based on seed
         const xVar = Math.sin(seed * 100 + x) * 0.03 * variation
         const yVar = Math.cos(seed * 100 + y) * 0.03 * variation
         const zVar = Math.sin(seed * 50 + z) * 0.02
-        return [x + xVar, y + yVar, z + zVar]
+        return [x + xVar, y + yVar, z + zVar] as [number, number, number]
       })
     }))
   } catch (error) {
@@ -155,7 +164,7 @@ async function generateCustomFaceFromImage(buffer: Buffer): Promise<FaceContour[
 
 interface FaceContour {
   name: string
-  points: number[][]
+  points: [number, number, number][]
   connects_to: string[]
 }
 
@@ -203,15 +212,35 @@ export async function GET(request: NextRequest) {
     console.log('🎭 Analyzing face for user:', userId)
 
     const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user || !user.photoUrls) {
-      console.warn('⚠️ User photos not found, using mock data')
+    if (!user) {
+      console.warn('⚠️ User not found, using mock data')
+      return NextResponse.json({ 
+        faceData: { contours: generateMockFaceContours() }
+      })
+    }
+
+    // CHECK FOR MEDIAPIPE DATA FIRST (new flow)
+    if (user.faceData) {
+      console.log('✅ Found MediaPipe face data in database!')
+      try {
+        const faceData = JSON.parse(user.faceData)
+        console.log(`   Using ${faceData.contours?.length || 0} pre-computed contours from MediaPipe`)
+        return NextResponse.json({ faceData })
+      } catch (error) {
+        console.warn('⚠️ Failed to parse stored face data:', error)
+      }
+    }
+
+    // FALLBACK: If no MediaPipe data, try Claude Vision (old flow)
+    if (!user.photoUrls) {
+      console.warn('⚠️ No face data or photos found, using mock data')
       return NextResponse.json({ 
         faceData: { contours: generateMockFaceContours() }
       })
     }
 
     const photoUrls = JSON.parse(user.photoUrls)
-    console.log('📸 Found photos:', photoUrls.length)
+    console.log('📸 No MediaPipe data, processing photos with Claude:', photoUrls.length)
 
     const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
     if (!ANTHROPIC_API_KEY || ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
@@ -224,11 +253,11 @@ export async function GET(request: NextRequest) {
     try {
       const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY })
 
-      // Read first 3 photos for analysis and convert to cartoon style
+      // Read ALL photos for analysis and convert to cartoon style
       const photoData = []
       const photoBuffers = []
       console.log('🎨 Converting photos to cartoon style...')
-      for (let i = 0; i < Math.min(photoUrls.length, 3); i++) {
+      for (let i = 0; i < photoUrls.length; i++) {
         try {
           const photoPath = join(process.cwd(), 'public', photoUrls[i])
           const buffer = await readFile(photoPath)
@@ -340,17 +369,38 @@ CRITICAL:
 
       console.log('📄 Claude response (first 500 chars):', responseText.substring(0, 500))
       
+      // FIRST: Extract feature descriptions (before JSON parsing, so we have them even if parsing fails)
+      const hasDescriptions = responseText.toLowerCase().includes('face:') || 
+                             responseText.toLowerCase().includes('hair:') ||
+                             responseText.toLowerCase().includes('wavy') || 
+                             responseText.toLowerCase().includes('curly') ||
+                             responseText.toLowerCase().includes('angular') || 
+                             responseText.toLowerCase().includes('oval') ||
+                             responseText.toLowerCase().includes('round')
+      
+      if (hasDescriptions) {
+        console.log('📝 Found feature descriptions in Claude response!')
+      }
+      
       // Check if Claude refused the request (but only if no JSON follows)
-      const hasJSON = responseText.includes('[{') && responseText.includes('}]')
+      const hasJSON = responseText.includes('[{') || responseText.includes('{')
       const seemsRefused = (responseText.toLowerCase().includes('i cannot') || 
                            responseText.toLowerCase().includes('i\'m not able')) &&
                            !hasJSON
       
       if (seemsRefused) {
         console.warn('⚠️ Claude refused the request with no JSON data')
-        console.warn('   Using image-based custom face generation instead...')
         
-        // Generate custom face from image properties
+        // If we have descriptions, use them with base template
+        if (hasDescriptions) {
+          console.log('   But we have descriptions! Using base template with modifications')
+          const baseContours = generateMockFaceContours()
+          const customizedContours = applyFeatureDescriptions(baseContours, responseText)
+          return NextResponse.json({ faceData: { contours: customizedContours } })
+        }
+        
+        // Otherwise fall back to image-based
+        console.warn('   Using image-based custom face generation instead...')
         const customContours = await generateCustomFaceFromImage(photoBuffers[0])
         return NextResponse.json({ 
           faceData: { contours: customContours }
@@ -369,6 +419,16 @@ CRITICAL:
         const jsonStart = cleanedText.indexOf('JSON:')
         cleanedText = cleanedText.substring(jsonStart + 5).trim()
         console.log('   Extracted JSON after "JSON:" marker')
+      }
+      
+      // If JSON starts with { instead of [{, wrap in array
+      if (cleanedText.startsWith('{') && !cleanedText.startsWith('[{')) {
+        console.log('   Wrapping single object in array brackets')
+        // Find the end of the JSON (last })
+        const lastBrace = cleanedText.lastIndexOf('}')
+        if (lastBrace !== -1) {
+          cleanedText = '[' + cleanedText.substring(0, lastBrace + 1) + ']'
+        }
       }
       
       // Find array start/end if Claude added text
@@ -411,16 +471,20 @@ CRITICAL:
         
         if (contours.length < 20) {
           console.warn(`⚠️ Claude returned only ${contours.length} contours (expected 28)`)
-          console.warn(`   This often means incomplete response. Using custom face with variations.`)
-          const customContours = await generateCustomFaceFromImage(photoBuffers[0])
-          return NextResponse.json({ faceData: { contours: customContours } })
+          console.warn(`   Using base template modified with Claude's feature descriptions`)
+          
+          // Use base template but apply Claude's feature descriptions
+          const baseContours = generateMockFaceContours()
+          const customizedContours = applyFeatureDescriptions(baseContours, responseText)
+          
+          return NextResponse.json({ faceData: { contours: customizedContours } })
         }
         
         // Validate that contours have enough points for smooth curves
-        const invalidContours = contours.filter(c => !c.points || c.points.length < 5)
+        const invalidContours = contours.filter((c: FaceContour) => !c.points || c.points.length < 5)
         if (invalidContours.length > 0) {
           console.warn(`⚠️ ${invalidContours.length} contours have too few points:`)
-          invalidContours.forEach(c => {
+          invalidContours.forEach((c: FaceContour) => {
             console.warn(`   - ${c.name}: ${c.points?.length || 0} points (need 5+)`)
           })
           console.warn('   Using mock data for quality')
@@ -443,7 +507,7 @@ CRITICAL:
         }
         
         // Validate point structure
-        const avgPoints = finalContours.reduce((sum, c) => sum + (c.points?.length || 0), 0) / finalContours.length
+        const avgPoints = finalContours.reduce((sum: number, c: FaceContour) => sum + (c.points?.length || 0), 0) / finalContours.length
         console.log('✅ Claude face analysis complete! Contours:', finalContours.length)
         console.log('   Average points per contour:', avgPoints.toFixed(1))
         console.log('🎭 Custom face model created for user:', userId.substring(0, 10))
@@ -454,10 +518,20 @@ CRITICAL:
       } catch (parseError: any) {
         console.error('❌ Failed to parse Claude JSON:', parseError.message)
         console.error('   Response length:', responseText.length, '/ Max: 4096 tokens')
-        console.error('   First 300 chars:', cleanedText.substring(0, 300))
         console.error('   Position:', parseError.message.match(/position (\d+)/)?.[1] || 'unknown')
         
-        // Try one more time with image-based custom face
+        // If we have feature descriptions, use them!
+        if (hasDescriptions) {
+          console.log('   ✅ But we have Claude\'s feature descriptions!')
+          console.log('   Using base template modified with descriptions')
+          const baseContours = generateMockFaceContours()
+          const customizedContours = applyFeatureDescriptions(baseContours, responseText)
+          return NextResponse.json({ 
+            faceData: { contours: customizedContours }
+          })
+        }
+        
+        // Otherwise fall back to image-based custom face
         console.log('   Falling back to image-based custom face...')
         const customContours = await generateCustomFaceFromImage(photoBuffers[0])
         return NextResponse.json({ 
@@ -480,7 +554,7 @@ CRITICAL:
   }
 }
 
-function generateMockFaceContours() {
+function generateMockFaceContours(): FaceContour[] {
   console.log('🎭 Generating realistic 3D head with proper depth + hair + ears + neck (28 contours)')
   
   // Full 3D head: face + hair + back scaffold (with MUCH more depth)
