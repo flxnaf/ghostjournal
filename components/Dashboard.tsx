@@ -10,6 +10,7 @@ interface DashboardProps {
   onCreateCharacter: () => void
   onBrowseClones: () => void
   onLogout: () => void
+  onReRecordVoice?: () => void
 }
 
 export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout }: DashboardProps) {
