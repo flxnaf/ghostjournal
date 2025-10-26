@@ -243,7 +243,7 @@ object TwinCommands {
                 // Fallback to MVP if Advanced Edition fails
                 TwinNPC.spawn(world, pos, twinData)
                 player.sendMessage(
-                    Text.literal("§a✓ Spawned ${twinData.display_name} (MVP Mode)"),
+                    Text.literal("§a✓ Spawned ${twinData.display_name} (Villager Mode)"),
                     false
                 )
                 player.sendMessage(
@@ -252,11 +252,11 @@ object TwinCommands {
                 )
             }
         } else {
-            // FALLBACK: Spawn as MVP Mode (armor stand)
-            println("⚠️ TwinEntity not available, using MVP armor stand")
+            // FALLBACK: Spawn as MVP Mode (villager)
+            println("⚠️ TwinEntity not available, using MVP villager")
             TwinNPC.spawn(world, pos, twinData)
             player.sendMessage(
-                Text.literal("§a✓ Spawned ${twinData.display_name} (MVP Mode)"),
+                Text.literal("§a✓ Spawned ${twinData.display_name} (Villager Mode)"),
                 false
             )
             player.sendMessage(
@@ -361,7 +361,7 @@ object TwinCommands {
             true
         } ?: false
 
-        // If not found as TwinEntity, try MVP armor stand
+        // If not found as TwinEntity, try MVP villager fallback
         if (!removedEntity && TwinNPC.isSpawned(name)) {
             TwinNPC.despawn(name)
         }
@@ -380,7 +380,7 @@ object TwinCommands {
         if (spawnedEntities[name]?.isAlive == true) {
             return true
         }
-        // Check MVP armor stand
+        // Check MVP villager fallback
         return TwinNPC.isSpawned(name)
     }
 }

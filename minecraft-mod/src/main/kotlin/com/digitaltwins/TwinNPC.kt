@@ -1,48 +1,53 @@
 package com.digitaltwins
 
 import net.minecraft.entity.EntityType
-import net.minecraft.entity.decoration.ArmorStandEntity
+import net.minecraft.entity.LivingEntity
+import net.minecraft.entity.passive.VillagerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
-import net.minecraft.util.math.Vec3d
+import net.minecraft.village.VillagerProfession
+import net.minecraft.village.VillagerType
 
 /**
  * Manages spawned twin NPCs in the world
  */
 object TwinNPC {
-    private val spawnedTwins = mutableMapOf<String, ArmorStandEntity>()
+    private val spawnedTwins = mutableMapOf<String, LivingEntity>()
 
     /**
      * Spawn a twin NPC in the world
      */
-    fun spawn(world: ServerWorld, pos: BlockPos, twinData: TwinAPI.TwinData): ArmorStandEntity {
+    fun spawn(world: ServerWorld, pos: BlockPos, twinData: TwinAPI.TwinData): LivingEntity {
         // Remove existing twin if already spawned
         despawn(twinData.name)
 
-        // Create armor stand entity
-        val armorStand = ArmorStandEntity(EntityType.ARMOR_STAND, world)
+        // Create villager entity as conversational twin stand-in
+        val villager = VillagerEntity(EntityType.VILLAGER, world)
 
-        // Set position (center of block, at ground level)
-        armorStand.setPosition(Vec3d(
+        villager.refreshPositionAndAngles(
             pos.x + 0.5,
             pos.y.toDouble(),
-            pos.z + 0.5
-        ))
+            pos.z + 0.5,
+            0f,
+            0f
+        )
 
-        // Configure armor stand
-        armorStand.customName = Text.literal(twinData.display_name)
-        armorStand.isCustomNameVisible = true
-        armorStand.isInvulnerable = true
-        armorStand.setNoGravity(true)
+        villager.villagerData = villager.villagerData
+            .withType(VillagerType.PLAINS)
+            .withProfession(VillagerProfession.NONE)
 
-        // Spawn in world
-        world.spawnEntity(armorStand)
+        villager.customName = Text.literal(twinData.display_name)
+        villager.isCustomNameVisible = true
+        villager.isInvulnerable = true
+        villager.setAiDisabled(true)
+        villager.setPersistent()
 
-        // Store reference
-        spawnedTwins[twinData.name] = armorStand
+        world.spawnEntity(villager)
 
-        return armorStand
+        spawnedTwins[twinData.name] = villager
+
+        return villager
     }
 
     /**
@@ -58,7 +63,7 @@ object TwinNPC {
     /**
      * Get spawned twin by name
      */
-    fun getTwin(name: String): ArmorStandEntity? {
+    fun getTwin(name: String): LivingEntity? {
         return spawnedTwins[name]
     }
 
