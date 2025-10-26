@@ -5,6 +5,10 @@ import { readFile } from 'fs/promises'
 import { join } from 'path'
 import sharp from 'sharp'
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 const prisma = new PrismaClient()
 
 /**
