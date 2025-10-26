@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
-import { Mic, CheckCircle, AlertCircle, Upload } from 'lucide-react'
+import { Mic, CheckCircle, AlertCircle, Upload, BookOpen, RotateCcw, Smile } from 'lucide-react'
 import { useFaceMesh } from '@/lib/hooks/useFaceMesh'
 import { applyMediapipeToMockFace } from '@/lib/applyMediapipeToMock'
 
@@ -272,18 +272,39 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
       setProcessingFace(false)
       setProgress(50)
 
-      console.log('📤 Step 3: Uploading face data and initial context...')
+      console.log('📤 Step 3: Uploading face data, photo, and initial context...')
 
-      // Send personalized face contours and initial context to API
+      // Upload the front photo to Supabase Storage (reuse frontPhoto from line 205)
+      let photoUrl = null
+      
+      if (validPhotos[0]) {
+        console.log('📸 Uploading profile photo to Supabase...')
+        const formData = new FormData()
+        formData.append('photo', validPhotos[0])
+        formData.append('userId', userId)
+        
+        try {
+          const photoResponse = await axios.post('/api/upload-photo', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+          photoUrl = photoResponse.data.photoUrl
+          console.log('✅ Profile photo uploaded:', photoUrl)
+        } catch (photoError) {
+          console.error('⚠️ Failed to upload photo, continuing without it:', photoError)
+        }
+      }
+
+      // Send personalized face contours, photo URL, and initial context to API
       const response = await axios.post('/api/update-user', {
         userId,
         faceContours: personalizedFace,
-        contexts
+        contexts,
+        photoUrl
       }, {
         headers: { 'Content-Type': 'application/json' }
       })
 
-      console.log('✅ Face model and initial context uploaded!')
+      console.log('✅ Face model, photo, and initial context uploaded!')
       setProgress(100)
       
       // Brief pause to show completion, then proceed
@@ -452,8 +473,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              📖 Tell us a story about yourself
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Tell us a story about yourself
             </label>
             <textarea
               value={contexts.story}
@@ -466,8 +488,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              🔄 Describe a daily habit
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Describe a daily habit
             </label>
             <textarea
               value={contexts.habit}
@@ -480,8 +503,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              😊 How do you typically react to challenges?
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <Smile className="w-4 h-4" />
+              How do you typically react to challenges?
             </label>
             <textarea
               value={contexts.reaction}

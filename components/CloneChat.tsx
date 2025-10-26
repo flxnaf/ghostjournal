@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
 import dynamic from 'next/dynamic'
-import { StopCircle } from 'lucide-react'
+import { StopCircle, Edit3, Volume2, Music } from 'lucide-react'
 
 const FaceWaveform3D = dynamic(() => import('./FaceWaveform3D'), { 
   ssr: false,
@@ -23,22 +23,49 @@ interface CloneChatProps {
 }
 
 export default function CloneChat({ userId, ownerName }: CloneChatProps) {
-  const initialMessage = ownerName 
-    ? `Hey! I'm ${ownerName}'s digital clone. Talk to me and I'll respond exactly how ${ownerName} would. You can chat naturally with me to learn more about ${ownerName}.`
-    : "Hey! I'm your digital clone. Talk to me like you'd talk to yourself - I'll respond exactly how YOU would. You can also update my knowledge:\n• Say 'I have new stories: [story]' to add context\n• Ask 'How would you respond to [scenario]?' for specific reactions"
+  console.log('🎭 CloneChat initialized:')
+  console.log('   userId:', userId)
+  console.log('   ownerName:', ownerName)
+  console.log('   Is browsing another user:', !!ownerName)
+  
+  // Generate initial message based on ownerName
+  const getInitialMessage = () => {
+    return ownerName 
+      ? `Hey! I'm ${ownerName}'s clone. Talk to me like you're talking to ${ownerName}- I'll respond exactly how they would.`
+      : "Hey! I'm your clone. Talk to me like you're talking to yourself - I'll respond exactly how YOU would."
+  }
   
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: initialMessage
+      content: getInitialMessage()
     }
   ])
+  
+  // Track previous ownerName to detect actual changes
+  const [prevOwnerName, setPrevOwnerName] = useState(ownerName)
+  
+  // Only reset messages if ownerName actually changes (not just tab switch)
+  useEffect(() => {
+    if (ownerName !== prevOwnerName) {
+      console.log('🔄 ownerName changed from', prevOwnerName, 'to', ownerName, '- resetting messages')
+      setMessages([
+        {
+          role: 'assistant',
+          content: getInitialMessage()
+        }
+      ])
+      setPrevOwnerName(ownerName)
+    }
+  }, [ownerName, prevOwnerName])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioData, setAudioData] = useState<number[]>([])
   const [currentEmotion, setCurrentEmotion] = useState<string>('neutral')
   const [canInterrupt, setCanInterrupt] = useState(true)
+  const [critiquingIdx, setCritiquingIdx] = useState<number | null>(null)
+  const [critiqueInput, setCritiqueInput] = useState('')
   
   // Store userId in sessionStorage for FaceWaveform3D
   useEffect(() => {
@@ -94,7 +121,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
       
       // Show success message
       const successMsg = document.createElement('div')
-      successMsg.textContent = '✅ Audio Enabled!'
+      successMsg.textContent = 'Audio Enabled!'
       successMsg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:15px 30px;background:#00ff88;color:#000;border-radius:10px;font-weight:bold;z-index:9999;'
       document.body.appendChild(successMsg)
       setTimeout(() => document.body.removeChild(successMsg), 2000)
@@ -304,7 +331,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
               
               // For hackathon demo: show a visual indicator instead of alert
               const playBtn = document.createElement('button')
-              playBtn.textContent = '🔊 Click to Play Audio'
+              playBtn.textContent = 'Click to Play Audio'
               playBtn.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:20px 40px;font-size:20px;background:#ffffff;color:#000;border:none;border-radius:10px;cursor:pointer;z-index:9999;animation:pulse 1s infinite;'
               document.body.appendChild(playBtn)
               
@@ -329,6 +356,42 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
     }
   }
 
+  const handleCritique = async (messageIdx: number) => {
+    if (!critiqueInput.trim()) return
+
+    console.log('✏️ User critiquing response:', messages[messageIdx].content.substring(0, 50))
+    console.log('   Critique:', critiqueInput)
+
+    try {
+      // Save critique as a memory to improve future responses
+      await axios.post('/api/memory', {
+        userId,
+        content: `User feedback: I wouldn't respond like "${messages[messageIdx].content.substring(0, 100)}...". Instead, I would say: "${critiqueInput}"`,
+        category: 'correction',
+        action: 'add'
+      })
+
+      console.log('✅ Critique saved as memory')
+      
+      // IMMEDIATELY regenerate personality to include this correction
+      console.log('🔄 Regenerating personality with new correction...')
+      await axios.post('/api/personality', {
+        userId
+      })
+      console.log('✅ Personality regenerated!')
+      
+      // Show success message
+      alert('Feedback saved! I\'ll respond more accurately next time.')
+      
+      // Reset critique state
+      setCritiquingIdx(null)
+      setCritiqueInput('')
+    } catch (error) {
+      console.error('❌ Failed to save critique:', error)
+      alert('Failed to save feedback. Please try again.')
+    }
+  }
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
@@ -345,6 +408,10 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
       
       // Send message to API
       console.log('📡 Calling /api/speak...')
+      console.log('📤 Sending message to /api/speak:')
+      console.log('   userId:', userId)
+      console.log('   message:', input.substring(0, 50))
+      
       const response = await axios.post('/api/speak', {
         userId,
         message: input,
@@ -356,9 +423,17 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
         }
       })
 
-      console.log('✅ Received response:', response.data)
-      console.log('   Text:', response.data.text?.substring(0, 100))
+      console.log('═══════════════════════════════════════════════')
+      console.log('✅ /api/speak RESPONSE RECEIVED')
+      console.log('   Full response:', JSON.stringify(response.data).substring(0, 200))
+      console.log('   Text length:', response.data.text?.length || 0)
+      console.log('   Text preview:', response.data.text?.substring(0, 100))
       console.log('   Audio URL:', response.data.audioUrl)
+      console.log('   Audio URL type:', typeof response.data.audioUrl)
+      console.log('   Audio URL length:', response.data.audioUrl?.length || 0)
+      console.log('   Is URL absolute?:', response.data.audioUrl?.startsWith('http'))
+      console.log('   Is URL relative?:', response.data.audioUrl?.startsWith('/'))
+      console.log('═══════════════════════════════════════════════')
 
       const assistantMessage: Message = {
         role: 'assistant',
@@ -437,7 +512,9 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
             animate={{ y: 0 }}
             className="bg-dark-card border border-white/30 rounded-2xl p-8 max-w-md mx-4 text-center"
           >
-            <div className="text-6xl mb-4">🔊</div>
+            <div className="mb-4">
+              <Volume2 className="w-16 h-16 text-white mx-auto" />
+            </div>
             <h2 className="text-2xl font-bold text-white mb-4">
               Enable Audio
             </h2>
@@ -452,9 +529,10 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={enableAudio}
-              className="w-full bg-transparent border-2 border-white text-white font-bold py-4 px-8 rounded-xl hover:bg-white hover:text-black transition-all"
+              className="w-full bg-transparent border-2 border-white text-white font-bold py-4 px-8 rounded-xl hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2"
             >
-              🎵 Enable Audio & Continue
+              <Music className="w-5 h-5" />
+              Enable Audio & Continue
             </motion.button>
             <p className="text-xs text-gray-500 mt-4">
               Required for voice playback
@@ -536,7 +614,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg p-4 ${
@@ -546,9 +624,49 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
                   }`}
                 >
                   <p className="text-sm">{message.content}</p>
-                  
-                  {/* Audio auto-plays when response arrives - no button needed */}
                 </div>
+                
+                {/* Critique button for assistant messages (not the initial message) */}
+                {message.role === 'assistant' && idx > 0 && (
+                  <div className="mt-2 max-w-[80%] w-full">
+                    {critiquingIdx === idx ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={critiqueInput}
+                          onChange={(e) => setCritiqueInput(e.target.value)}
+                          placeholder="I would respond: ..."
+                          className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 text-white text-sm focus:border-white focus:outline-none"
+                          rows={2}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleCritique(idx)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 transition-colors"
+                          >
+                            Submit Feedback
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCritiquingIdx(null)
+                              setCritiqueInput('')
+                            }}
+                            className="px-4 py-2 bg-transparent border border-white/30 text-white rounded-lg text-xs hover:bg-white/10 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setCritiquingIdx(idx)}
+                        className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        I wouldn't respond like this...
+                      </button>
+                    )}
+                  </div>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

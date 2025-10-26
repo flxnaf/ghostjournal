@@ -25,6 +25,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
+    console.log('🔍 GET /api/personality - userId:', userId)
+    console.log('   Type:', typeof userId, '| Length:', userId.length)
+
+    // Validate UUID format (8-4-4-4-12 hex characters)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(userId)) {
+      console.error('❌ Invalid UUID format received:', userId)
+      console.error('   First 20 chars:', userId.substring(0, 20))
+      return NextResponse.json(
+        { 
+          error: 'Invalid user ID format', 
+          details: `Expected UUID, got: ${userId.substring(0, 50)}`,
+          hint: 'Check that clone.userId (not username) is being passed'
+        },
+        { status: 400 }
+      )
+    }
+
     // Admin bypass
     const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
     if (isAdminUser) {
@@ -54,7 +72,10 @@ export async function GET(request: NextRequest) {
         faceData: true,
         name: true,
         email: true,
-        createdAt: true
+        createdAt: true,
+        isPublic: true,
+        username: true,
+        bio: true
       }
     })
 
@@ -151,6 +172,23 @@ export async function POST(request: NextRequest) {
     const storiesMem = memories.filter(m => m.category === 'story' || m.category === 'stories').map(m => m.content).join('\n')
     const habitsMem = memories.filter(m => m.category === 'habit' || m.category === 'habits').map(m => m.content).join('\n')
     const reactionsMem = memories.filter(m => m.category === 'reaction' || m.category === 'reactions').map(m => m.content).join('\n')
+    const correctionsMem = memories.filter(m => m.category === 'correction').map(m => m.content).join('\n')
+    const preferencesMem = memories.filter(m => m.category === 'preference').map(m => m.content).join('\n')
+    const skillsMem = memories.filter(m => m.category === 'skill').map(m => m.content).join('\n')
+    const goalsMem = memories.filter(m => m.category === 'goal').map(m => m.content).join('\n')
+    const valuesMem = memories.filter(m => m.category === 'value').map(m => m.content).join('\n')
+    const memoriesMem = memories.filter(m => m.category === 'memory').map(m => m.content).join('\n')
+    
+    console.log('📊 Memory counts by category:')
+    console.log('   Stories:', memories.filter(m => m.category === 'story').length)
+    console.log('   Habits:', memories.filter(m => m.category === 'habit').length)
+    console.log('   Reactions:', memories.filter(m => m.category === 'reaction').length)
+    console.log('   Corrections:', memories.filter(m => m.category === 'correction').length)
+    console.log('   Preferences:', memories.filter(m => m.category === 'preference').length)
+    console.log('   Skills:', memories.filter(m => m.category === 'skill').length)
+    console.log('   Goals:', memories.filter(m => m.category === 'goal').length)
+    console.log('   Values:', memories.filter(m => m.category === 'value').length)
+    console.log('   Memories:', memories.filter(m => m.category === 'memory').length)
     
     // Store the raw contexts directly (no Claude processing)
     // This preserves the exact personality traits like "I am always angry!"
@@ -158,7 +196,13 @@ export async function POST(request: NextRequest) {
       stories: storiesMem || 'N/A',
       habits: habitsMem || 'N/A',
       reactions: reactionsMem || 'N/A',
-      background: `This person's stories: ${storiesMem}. Their habits: ${habitsMem}. How they react: ${reactionsMem}`
+      corrections: correctionsMem || 'N/A',
+      preferences: preferencesMem || 'N/A',
+      skills: skillsMem || 'N/A',
+      goals: goalsMem || 'N/A',
+      values: valuesMem || 'N/A',
+      memories: memoriesMem || 'N/A',
+      background: `This person's stories: ${storiesMem}. Their habits: ${habitsMem}. How they react: ${reactionsMem}. User corrections: ${correctionsMem}. Preferences: ${preferencesMem}. Skills: ${skillsMem}. Goals: ${goalsMem}. Values: ${valuesMem}. Memories: ${memoriesMem}`
     }
     
     console.log('💾 Storing personality data:', personality)

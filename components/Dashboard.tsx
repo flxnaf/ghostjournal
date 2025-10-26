@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { User, Users, Trash2, Globe, Lock } from 'lucide-react'
 
@@ -18,7 +18,25 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPublic, setIsPublic] = useState(user.isPublic || false)
   const [isTogglingPublic, setIsTogglingPublic] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+
+  // Sync local state with user prop changes
+  useEffect(() => {
+    console.log('🔄 Dashboard: Syncing isPublic state with user prop:', user.isPublic)
+    setIsPublic(user.isPublic || false)
+  }, [user.isPublic])
+
+  // Get profile photo URL
+  const getProfilePhotoUrl = () => {
+    if (!user.photoUrls) return null
+    try {
+      const photoUrls = JSON.parse(user.photoUrls)
+      return Array.isArray(photoUrls) && photoUrls.length > 0 ? photoUrls[0] : null
+    } catch {
+      return null
+    }
+  }
+  
+  const profilePhotoUrl = getProfilePhotoUrl()
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
@@ -50,19 +68,6 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
     }
   }
 
-  const handleRefreshPersonality = async () => {
-    setIsRefreshing(true)
-    try {
-      await axios.post('/api/refresh-personality', { userId: user.id })
-      alert('✅ Clone personality refreshed! Old data cleared.')
-    } catch (error) {
-      console.error('Refresh error:', error)
-      alert('Failed to refresh personality. Please try again.')
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
-
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <div className="max-w-5xl w-full">
@@ -85,13 +90,19 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            whileHover={{ scale: 1.02 }}
-            onClick={onCreateCharacter}
-            className="bg-dark-surface rounded-2xl p-8 glow-border cursor-pointer
+            className="bg-dark-surface rounded-2xl p-8 glow-border
                      hover:border-white/50 transition-all"
           >
             <div className="mb-4">
-              <User className="w-16 h-16 text-white" />
+              {profilePhotoUrl ? (
+                <img 
+                  src={profilePhotoUrl} 
+                  alt="Profile" 
+                  className="w-24 h-24 rounded-full object-cover border-2 border-white/30"
+                />
+              ) : (
+                <User className="w-16 h-16 text-white" />
+              )}
             </div>
             <h2 className="text-3xl font-bold text-white mb-3">
               My Clone Model
@@ -99,9 +110,31 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
             <p className="text-gray-400 mb-4">
               Create or edit your digital clone. Train your voice, upload your appearance, and build your personality model.
             </p>
-            <div className="flex items-center text-white font-medium">
-              <span>Get Started</span>
-              <span className="ml-2">→</span>
+            
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              <button
+                onClick={onCreateCharacter}
+                className="w-full px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg
+                         font-medium transition-all flex items-center justify-center"
+              >
+                <span>Edit Character</span>
+                <span className="ml-2">→</span>
+              </button>
+              
+              {onReRecordVoice && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onReRecordVoice()
+                  }}
+                  className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 
+                           text-blue-400 border border-blue-400/30 rounded-lg
+                           font-medium transition-all"
+                >
+                  Re-record Voice
+                </button>
+              )}
             </div>
           </motion.div>
 
@@ -171,32 +204,6 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
               {isTogglingPublic ? 'Updating...' : (isPublic ? 'Make Private' : 'Make Public')}
             </button>
           </div>
-        </motion.div>
-
-        {/* Action Buttons */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 text-center space-y-3"
-        >
-          {onReRecordVoice && (
-            <button
-              onClick={onReRecordVoice}
-              className="px-6 py-2 text-sm text-blue-400 border border-blue-400/30 rounded-lg
-                       hover:bg-blue-400/10 transition-colors mr-3"
-            >
-              Re-record Voice
-            </button>
-          )}
-          <button
-            onClick={handleRefreshPersonality}
-            disabled={isRefreshing}
-            className="px-6 py-2 text-sm text-green-400 border border-green-400/30 rounded-lg
-                     hover:bg-green-400/10 transition-colors disabled:opacity-50"
-          >
-            {isRefreshing ? 'Refreshing...' : '🔄 Refresh Clone Data'}
-          </button>
         </motion.div>
 
         {/* Delete Account Button */}

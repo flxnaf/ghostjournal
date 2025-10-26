@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
-import { Download, Heart } from 'lucide-react'
+import { Download, Heart, BookOpen, RotateCcw, Smile, Target, Brain, Trophy, Star } from 'lucide-react'
 
 interface ContextBuilderProps {
   userId: string
+  username?: string
 }
 
 interface ContextEntry {
@@ -16,7 +17,7 @@ interface ContextEntry {
   timestamp: Date
 }
 
-export default function ContextBuilder({ userId }: ContextBuilderProps) {
+export default function ContextBuilder({ userId, username }: ContextBuilderProps) {
   const [entries, setEntries] = useState<ContextEntry[]>([])
   const [newEntry, setNewEntry] = useState({ category: 'story', content: '' })
   const [saving, setSaving] = useState(false)
@@ -32,26 +33,74 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
   }, [userId])
 
   const loadContext = async () => {
+    console.log('═══════════════════════════════════════════════')
+    console.log('🔍 ContextBuilder.loadContext() called')
+    console.log('   userId:', userId)
+    console.log('   isAdminUser:', isAdminUser)
+    console.log('   STORAGE_KEY:', STORAGE_KEY)
+    console.log('═══════════════════════════════════════════════')
+    
     try {
       // For admin users, try localStorage first
       if (isAdminUser) {
+        console.log('🔑 Admin user detected - checking localStorage...')
         const cached = localStorage.getItem(STORAGE_KEY)
+        console.log('   localStorage value:', cached ? `${cached.length} chars` : 'NULL')
+        
         if (cached) {
           console.log('📦 Loading context from localStorage (admin mode)')
-          setEntries(JSON.parse(cached))
+          const parsed = JSON.parse(cached)
+          console.log('   Parsed entries:', parsed.length)
+          setEntries(parsed)
           setLoading(false)
           return
         }
+        
+        console.log('   No localStorage data, will try database...')
+      } else {
+        console.log('👤 Regular user - skipping localStorage, going to database')
       }
       
-      // Try database
-      const response = await axios.get(`/api/personality?userId=${userId}`)
-      if (response.data.personalityData) {
-        const personalityData = JSON.parse(response.data.personalityData)
-        setEntries(personalityData.entries || [])
+      console.log('📥 Calling GET /api/memory...')
+      console.log('   URL:', `/api/memory?userId=${userId}`)
+      
+      // Load memories from database (initial contexts + user-added ones)
+      const memoriesResponse = await axios.get(`/api/memory?userId=${userId}`)
+      
+      console.log('📦 API Response received:')
+      console.log('   Status:', memoriesResponse.status)
+      console.log('   Data:', memoriesResponse.data)
+      
+      const memories = memoriesResponse.data.memories || []
+      
+      console.log(`✅ Loaded ${memories.length} memories from database`)
+      
+      if (memories.length > 0) {
+        console.log('   Sample memory:', memories[0])
+        console.log('   Categories:', memories.map((m: any) => m.category).join(', '))
+      } else {
+        console.log('   ⚠️ NO MEMORIES RETURNED FROM DATABASE!')
       }
-    } catch (error) {
+      
+      // Convert memories to ContextEntry format
+      const contextEntries: ContextEntry[] = memories.map((mem: any) => ({
+        id: mem.id,
+        category: mem.category || 'story',
+        content: mem.content,
+        timestamp: new Date(mem.createdAt)
+      }))
+      
+      console.log('📝 Converted to ContextEntry format:', contextEntries.length)
+      
+      setEntries(contextEntries)
+      
+      // Also cache to localStorage for offline access
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(contextEntries))
+      console.log('💾 Cached to localStorage for offline access')
+      
+    } catch (error: any) {
       console.error('Error loading context:', error)
+      console.error('   Error details:', error.response?.data || error.message)
       
       // Fallback to localStorage for any user
       const cached = localStorage.getItem(STORAGE_KEY)
@@ -72,31 +121,40 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
 
     setSaving(true)
     try {
-      const entry: ContextEntry = {
-        id: `entry_${Date.now()}`,
-        category: newEntry.category,
-        content: newEntry.content,
-        timestamp: new Date()
-      }
-
-      const updatedEntries = [...entries, entry]
-      setEntries(updatedEntries)
-
-      // Save to localStorage (for admin or as backup)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
-      console.log('💾 Saved to localStorage:', STORAGE_KEY)
-
-      // Save to database (skip for admin)
+      console.log('💾 Saving new entry:', newEntry.category)
+      
+      // Save to database first (creates Memory record)
       if (!isAdminUser) {
-        await axios.post('/api/personality', {
+        const response = await axios.post('/api/memory', {
           userId,
-          personalityData: {
-            entries: updatedEntries,
-            lastUpdated: new Date()
-          }
+          content: newEntry.content,
+          category: newEntry.category,
+          action: 'add'
         })
+        
+        console.log('✅ Memory saved to database:', response.data)
+        
+        // IMMEDIATELY regenerate personality with new entry
+        console.log('🔄 Regenerating personality with new entry...')
+        await axios.post('/api/personality', {
+          userId
+        })
+        console.log('✅ Personality regenerated!')
+        
+        // Reload all memories to stay in sync with database
+        await loadContext()
       } else {
-        console.log('🔑 Admin mode - skipping database save')
+        // Admin mode: save to localStorage only
+        console.log('🔑 Admin mode - saving to localStorage only')
+        const entry: ContextEntry = {
+          id: `entry_${Date.now()}`,
+          category: newEntry.category,
+          content: newEntry.content,
+          timestamp: new Date()
+        }
+        const updatedEntries = [...entries, entry]
+        setEntries(updatedEntries)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
       }
 
       // Clear form
@@ -112,25 +170,34 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
   }
 
   const deleteEntry = async (id: string) => {
-    const updatedEntries = entries.filter(e => e.id !== id)
-    setEntries(updatedEntries)
-
-    // Save to localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
-
-    // Save to database (skip for admin)
+    console.log('🗑️ Deleting entry:', id)
+    
+    // Delete from database first
     if (!isAdminUser) {
       try {
+        await axios.delete(`/api/memory?userId=${userId}&memoryId=${id}`)
+        console.log('✅ Memory deleted from database')
+        
+        // IMMEDIATELY regenerate personality without this entry
+        console.log('🔄 Regenerating personality after deletion...')
         await axios.post('/api/personality', {
-          userId,
-          personalityData: {
-            entries: updatedEntries,
-            lastUpdated: new Date()
-          }
+          userId
         })
+        console.log('✅ Personality regenerated!')
+        
+        // Reload all memories to stay in sync with database
+        await loadContext()
       } catch (error) {
-        console.error('Error deleting entry:', error)
+        console.error('❌ Error deleting entry:', error)
+        alert('Failed to delete entry. Please try again.')
+        return
       }
+    } else {
+      // Admin mode: delete from localStorage only
+      console.log('🔑 Admin mode - deleting from localStorage only')
+      const updatedEntries = entries.filter(e => e.id !== id)
+      setEntries(updatedEntries)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
     }
   }
 
@@ -180,6 +247,7 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       // User metadata
       metadata: {
         name: userData.name || 'Unknown',
+        username: username || userData.username || 'unknown',
         email: userData.email || null,
         createdAt: userData.createdAt || new Date().toISOString(),
         
@@ -196,7 +264,8 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `clone-data-${userId}-${Date.now()}.json`
+    const downloadUsername = username || userData.username || 'clone'
+    a.download = `${downloadUsername}_clone.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -248,14 +317,14 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
               className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
                        text-white focus:border-white focus:outline-none"
             >
-              <option value="story">📖 Story</option>
-              <option value="habit">🔄 Daily Habit</option>
-              <option value="reaction">😊 Typical Reaction</option>
-              <option value="preference">❤️ Preference</option>
-              <option value="skill">🎯 Skill</option>
-              <option value="memory">💭 Memory</option>
-              <option value="goal">🎯 Goal</option>
-              <option value="value">⭐ Core Value</option>
+              <option value="story">Story</option>
+              <option value="habit">Daily Habit</option>
+              <option value="reaction">Typical Reaction</option>
+              <option value="preference">Preference</option>
+              <option value="skill">Skill</option>
+              <option value="memory">Memory</option>
+              <option value="goal">Goal</option>
+              <option value="value">Core Value</option>
             </select>
           </div>
 
@@ -309,16 +378,15 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-dark-bg rounded-full text-sm font-medium text-white">
-                      {entry.category === 'story' && '📖'}
-                      {entry.category === 'habit' && '🔄'}
-                      {entry.category === 'reaction' && '😊'}
-                      {entry.category === 'preference' && '❤️'}
-                      {entry.category === 'skill' && '🎯'}
-                      {entry.category === 'memory' && '💭'}
-                      {entry.category === 'goal' && '🎯'}
-                      {entry.category === 'value' && '⭐'}
-                      {' '}
+                    <span className="px-3 py-1 bg-dark-bg rounded-full text-sm font-medium text-white flex items-center gap-2">
+                      {entry.category === 'story' && <BookOpen className="w-4 h-4" />}
+                      {entry.category === 'habit' && <RotateCcw className="w-4 h-4" />}
+                      {entry.category === 'reaction' && <Smile className="w-4 h-4" />}
+                      {entry.category === 'preference' && <Heart className="w-4 h-4" />}
+                      {entry.category === 'skill' && <Target className="w-4 h-4" />}
+                      {entry.category === 'memory' && <Brain className="w-4 h-4" />}
+                      {entry.category === 'goal' && <Trophy className="w-4 h-4" />}
+                      {entry.category === 'value' && <Star className="w-4 h-4" />}
                       {entry.category}
                     </span>
                     <span className="text-xs text-gray-500">

@@ -17,11 +17,102 @@ type ChromaClient = any
  * 3. Query - Retrieve relevant memories for context
  */
 
-export async function POST(request: NextRequest) {
-  console.log('💾 Memory API called')
+/**
+ * GET - Fetch all memories for a user
+ */
+export async function GET(request: NextRequest) {
   try {
-    const { userId, action, content, query } = await request.json()
-    console.log(`   Action: ${action}, UserId: ${userId?.substring(0, 10)}...`)
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+    }
+
+    console.log('📥 GET /api/memory - Fetching memories for:', userId.substring(0, 20))
+
+    // Fetch all memories for the user
+    const memories = await prisma.memory.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' } // Oldest first to show initial contexts first
+    })
+
+    console.log(`✅ Found ${memories.length} memories`)
+
+    return NextResponse.json({ 
+      memories,
+      count: memories.length
+    })
+
+  } catch (error: any) {
+    console.error('❌ GET /api/memory error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch memories', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * DELETE - Delete a specific memory
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const memoryId = searchParams.get('memoryId')
+
+    if (!userId || !memoryId) {
+      return NextResponse.json({ error: 'User ID and Memory ID required' }, { status: 400 })
+    }
+
+    console.log('🗑️ DELETE /api/memory - Deleting memory:', memoryId.substring(0, 20))
+
+    // Verify memory belongs to user before deleting
+    const memory = await prisma.memory.findUnique({
+      where: { id: memoryId }
+    })
+
+    if (!memory) {
+      return NextResponse.json({ error: 'Memory not found' }, { status: 404 })
+    }
+
+    if (memory.userId !== userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    // Delete the memory
+    await prisma.memory.delete({
+      where: { id: memoryId }
+    })
+
+    console.log('✅ Memory deleted')
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'Memory deleted'
+    })
+
+  } catch (error: any) {
+    console.error('❌ DELETE /api/memory error:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete memory', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  console.log('💾 POST /api/memory called')
+  try {
+    const { userId, action, content, query, category } = await request.json()
+    console.log(`   Action: ${action || 'add'}, UserId: ${userId?.substring(0, 10)}...`)
+    
+    // If no action specified but content is provided, default to 'add'
+    if (!action && content) {
+      console.log('   No action specified, defaulting to "add"')
+      return await handleAddMemory(userId, content, category || 'story')
+    }
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
@@ -188,6 +279,48 @@ async function queryMemories(
   } catch (error: any) {
     console.error('Query memories error:', error)
     throw error
+  }
+}
+
+/**
+ * Helper function to add a memory directly (used by ContextBuilder)
+ */
+async function handleAddMemory(userId: string, content: string, category: string) {
+  if (!userId) {
+    return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+  }
+  if (!content || !content.trim()) {
+    return NextResponse.json({ error: 'Content required' }, { status: 400 })
+  }
+
+  console.log(`💾 Adding memory for user: ${userId.substring(0, 20)}`)
+  console.log(`   Category: ${category}`)
+  console.log(`   Content length: ${content.length}`)
+
+  try {
+    const memory = await prisma.memory.create({
+      data: { 
+        userId, 
+        content: content.trim(), 
+        embedding: '', 
+        category: category || 'story'
+      }
+    })
+    
+    console.log('✅ Memory created:', memory.id)
+    
+    return NextResponse.json({ 
+      success: true,
+      message: 'Memory added',
+      memoryId: memory.id,
+      memory
+    })
+  } catch (error: any) {
+    console.error('❌ Error creating memory:', error)
+    return NextResponse.json(
+      { error: 'Failed to add memory', details: error.message },
+      { status: 500 }
+    )
   }
 }
 

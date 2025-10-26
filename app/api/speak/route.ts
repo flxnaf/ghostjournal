@@ -98,7 +98,11 @@ export async function POST(request: NextRequest) {
       })
       
       // Reprocess personality in background
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      // Use Railway domain for internal API calls (works on both localhost and Railway)
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
       setTimeout(() => {
         fetch(baseUrl + '/api/personality', {
           method: 'POST',
@@ -133,7 +137,13 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
       
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      // Use Railway domain for internal API calls
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
+      console.log('   Memory API URL:', baseUrl + '/api/memory')
+      
       const memoryResponse = await fetch(baseUrl + '/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -235,7 +245,11 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
       // Store in memory asynchronously (don't block response)
       if (message.length > 50) {
         console.log('💾 Storing in memory (background)...')
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        // Use Railway domain for internal API calls
+        const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+          : 'http://localhost:3000'
+        
         const memoryContent = 'User asked: ' + message + '. Response: ' + responseText
         fetch(baseUrl + '/api/memory', {
           method: 'POST',
@@ -308,31 +322,37 @@ async function generateResponse(
       content: message
     })
 
-    const systemPrompt = `${personalityPrompt}
+    const systemPrompt = `You ARE this person responding naturally in a conversation. Here's what you know about yourself:
 
-${memoryContext ? `Relevant context from past conversations:\n${memoryContext}\n` : ''}
+${personalityPrompt}
 
-CRITICAL INSTRUCTIONS - YOU ARE THIS PERSON, NOT AN AI ASSISTANT:
-- You ARE this person. Respond EXACTLY as they would based on the context THEY provided.
-- This is NOT a roleplay - you ARE them. Their personality is YOUR personality.
-- Match their EXACT tone, mood, vocabulary, quirks from THEIR actual context.
-- ONLY adopt negative traits (anger/cynicism/sarcasm/pessimism) if THEY explicitly described themselves that way.
-- ONLY adopt positive traits (optimism/enthusiasm/energy) if THEY explicitly described themselves that way.
-- If they didn't specify a mood/tone, be NEUTRAL and conversational (balanced, not extreme in any direction).
-- DO NOT add AI disclaimers or explanations - you're having a natural conversation as them.
-- Use their speech patterns, slang, and expressions naturally.
-- Keep responses 2-4 sentences, conversational and authentic.
-- NO PROFANITY - express strong emotions through tone and actions (*scoffs*, *groans*, *sighs*).
-- Mirror what THEY actually said about themselves, not assumptions.
+${memoryContext ? `Background context (reference when relevant, don't dump all of it):\n${memoryContext}\n` : ''}
 
-Remember: You're based on what they TOLD you, not stereotypes or assumptions.`
+HOW TO RESPOND NATURALLY:
+1. Keep responses SHORT (1-2 sentences unless asked for details)
+2. ONLY mention specific context when directly relevant to the question
+   - "Hi" → Just greet back naturally with your personality/mood
+   - "How are you?" → Brief status that matches your emotional baseline
+   - "Tell me about X" → THEN you can elaborate on that specific topic
+3. Use context to inform your TONE and PERSONALITY, not to recite your life story
+4. Be conversational and natural - don't try to demonstrate all your knowledge at once
+5. Match your emotional baseline from your context (calm/energetic/pessimistic/etc)
+6. Use your vocabulary and speech patterns, but don't force them
+7. NO AI disclaimers - you're just chatting as yourself
+
+Example responses:
+- Input: "Hey" → "Hey! *smiles* What's up?" (not a life story)
+- Input: "What do you do?" → "I'm into [topic from context]" (brief, natural)
+- Input: "Tell me about your hobbies" → NOW elaborate on relevant hobbies from context
+
+Remember: Be authentic, brief, and only elaborate when asked. Context is for reference, not recitation.`
 
     console.log('📤 Calling Claude API...')
     console.log('   Messages count:', messages.length)
 
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 300,
+      max_tokens: 150, // Shorter to encourage brief responses
       system: systemPrompt,
       messages: messages as any
     })
@@ -541,17 +561,56 @@ async function generateVoice(
       }
     )
 
-    // Save audio file
-    const filename = `response_${Date.now()}.mp3`
-    const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
-    const audioPath = join(uploadDir, filename)
+    // Upload audio to Supabase Storage
+    const filename = `${userId}/response_${Date.now()}.mp3`
+    const audioBuffer = Buffer.from(response.data)
     
-    // Create directory if it doesn't exist
-    await mkdir(uploadDir, { recursive: true })
-    await writeFile(audioPath, Buffer.from(response.data))
+    console.log('📤 Uploading audio to Supabase Storage...')
+    console.log('   Filename:', filename)
+    console.log('   Size:', audioBuffer.length, 'bytes')
+    
+    // Check if Supabase is configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.warn('⚠️ Supabase not configured - saving to local filesystem')
+      const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+      const audioPath = join(uploadDir, `response_${Date.now()}.mp3`)
+      await mkdir(uploadDir, { recursive: true })
+      await writeFile(audioPath, audioBuffer)
+      return `/uploads/${userId}/response_${Date.now()}.mp3`
+    }
+    
+    // Create admin Supabase client (bypasses RLS)
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('audio-recordings')
+      .upload(filename, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true,
+      })
 
-    console.log('✅ Audio saved to:', `/uploads/${userId}/${filename}`)
-    return `/uploads/${userId}/${filename}`
+    if (error) {
+      console.error('❌ Supabase Storage error:', error)
+      throw new Error(`Failed to upload audio: ${error.message}`)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('audio-recordings')
+      .getPublicUrl(filename)
+
+    console.log('✅ Audio uploaded to Supabase:', urlData.publicUrl)
+    return urlData.publicUrl
 
   } catch (error: any) {
     console.error('❌ Fish Audio TTS error:', error)

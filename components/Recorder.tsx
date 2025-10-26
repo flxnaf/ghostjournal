@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Mic, CheckCircle } from 'lucide-react'
+import { Mic, CheckCircle, BookOpen } from 'lucide-react'
 
 interface RecorderProps {
   onComplete: (audioBlob: Blob) => void
@@ -147,8 +147,9 @@ export default function Recorder({ onComplete }: RecorderProps) {
           animate={{ opacity: 1, y: 0 }}
           className="p-8 bg-dark-card rounded-xl border border-white/30 shadow-lg"
         >
-          <p className="text-white text-sm font-semibold mb-4">
-            📖 Please read this paragraph:
+          <p className="text-white text-sm font-semibold mb-4 flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Please read this paragraph:
           </p>
           <p className="text-white text-xl leading-relaxed">
             {recordingPrompt}

@@ -213,15 +213,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    console.log('🎭 Analyzing face for user:', userId)
+    console.log('═══════════════════════════════════════════════')
+    console.log('🎭 /api/analyze-face - REQUEST RECEIVED')
+    console.log('   userId:', userId)
+    console.log('   Type:', typeof userId)
+    console.log('   Length:', userId.length)
+    console.log('   First 20 chars:', userId.substring(0, 20))
+    console.log('═══════════════════════════════════════════════')
 
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(userId)) {
+      console.error('❌ INVALID UUID FORMAT received in analyze-face!')
+      console.error('   Received:', userId)
+      console.error('   Expected: UUID format (e.g., 12345678-1234-1234-1234-123456789012)')
+      return NextResponse.json({ 
+        error: 'Invalid user ID format',
+        faceData: { contours: generateMockFaceContours() }
+      }, { status: 400 })
+    }
+
+    console.log('✅ UUID format valid, querying database...')
     const user = await prisma.user.findUnique({ where: { id: userId } })
+    
     if (!user) {
-      console.warn('⚠️ User not found, using mock data')
+      console.warn('⚠️ User NOT FOUND in database!')
+      console.warn('   Searched for userId:', userId)
+      console.warn('   Returning mock data')
       return NextResponse.json({ 
         faceData: { contours: generateMockFaceContours() }
       })
     }
+
+    console.log('✅ User FOUND in database!')
+    console.log('   Username:', user.username || '(none)')
+    console.log('   Email:', user.email?.substring(0, 20) || '(none)')
+    console.log('   Has faceData:', !!user.faceData)
+    console.log('   Has photoUrls:', !!user.photoUrls)
 
     // CHECK FOR MEDIAPIPE DATA FIRST (new flow)
     if (user.faceData) {
