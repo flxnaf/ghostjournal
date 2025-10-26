@@ -72,14 +72,14 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         .then(res => {
           console.log('📦 Fresh user data received:')
           console.log('   isPublic:', res.data.isPublic)
-          console.log('   audioUrl:', !!res.data.audioUrl)
+          console.log('   voiceModelId:', !!res.data.voiceModelId)
           console.log('   faceData:', !!res.data.faceData)
           console.log('   photoUrls:', !!res.data.photoUrls)
           
           // Update both local state AND user object
           setUserIsPublic(res.data.isPublic || false)
           user.isPublic = res.data.isPublic || false
-          user.audioUrl = res.data.audioUrl
+          user.voiceModelId = res.data.voiceModelId
           user.faceData = res.data.faceData
           user.photoUrls = res.data.photoUrls
           
@@ -364,18 +364,18 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
               
               console.log('📦 RECEIVED DATA FROM API:')
               console.log('   audioUrl:', userData.audioUrl || 'NULL')
-              console.log('   audioUrl exists?:', !!userData.audioUrl)
-              console.log('   faceData:', userData.faceData ? `${userData.faceData.substring(0, 50)}...` : 'NULL')
-              console.log('   faceData exists?:', !!userData.faceData)
               console.log('   voiceModelId:', userData.voiceModelId || 'NULL')
+              console.log('   faceData:', userData.faceData ? `${userData.faceData.substring(0, 50)}...` : 'NULL')
               console.log('   photoUrls:', userData.photoUrls || 'NULL')
               
-              const hasAudio = !!userData.audioUrl
+              // FIX: Check voiceModelId instead of audioUrl
+              // voiceModelId is what matters - it's the trained Fish Audio model
+              const hasVoice = !!userData.voiceModelId
               const hasFaceData = !!userData.faceData
-              const hasCompletedSetup = hasAudio && hasFaceData
+              const hasCompletedSetup = hasVoice && hasFaceData
               
               console.log('📊 SETUP STATUS EVALUATION:')
-              console.log('   hasAudio:', hasAudio)
+              console.log('   hasVoice (voiceModelId):', hasVoice)
               console.log('   hasFaceData:', hasFaceData)
               console.log('   hasCompletedSetup:', hasCompletedSetup)
               
@@ -383,7 +383,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                 console.log('✅✅✅ SETUP COMPLETE - GOING TO CLONETABS')
                 setUserId(user.id)
                 setStep('chat')
-              } else if (hasAudio && !hasFaceData) {
+              } else if (hasVoice && !hasFaceData) {
                 console.log('⚠️ PARTIAL SETUP - Voice done, photo/context missing')
                 console.log('   Going to upload step...')
                 setAudioBlob(new Blob())
@@ -397,7 +397,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                 setStep('upload')
               } else {
                 console.log('❌ NO SETUP - Starting from voice recording')
-                console.log('   Reason: hasAudio =', hasAudio, ', hasFaceData =', hasFaceData)
+                console.log('   Reason: hasVoice =', hasVoice, ', hasFaceData =', hasFaceData)
                 setStep('record')
               }
             } catch (err: any) {
