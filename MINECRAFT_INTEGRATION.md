@@ -2,19 +2,39 @@
 
 ## Overview
 
-This guide explains how to **download and integrate your friends' AI clones** into your Minecraft mod as NPCs.
+This guide explains how to **create custom NPCs in Minecraft** that talk and act like your friends using their Replik AI clones.
+
+### What You're Building:
+
+🎮 **Custom NPC Entities** with spawn eggs that:
+- Spawn in creative mode (like villagers)
+- Have basic AI (pathfinding, looking at player)
+- Open a **chat GUI** when right-clicked (Minecraft-style)
+- Respond with your **friend's personality** (via Claude AI)
+- Speak with your **friend's voice** (via Fish Audio TTS)
 
 ### Use Case: Import Friends as NPCs
 
 1. **Your friend creates their clone** on Replik (records voice, adds personality context)
 2. **You browse clones** → find your friend's clone
-3. **You download their clone data** → saves as `friend_clone.json`
-4. **You import into Minecraft** → your friend becomes an NPC with their voice and personality
+3. **You download their clone data** → saves as `sam_clone.json`
+4. **You place the JSON** in your mod's `clones/` folder
+5. **In Minecraft:** Get spawn egg from creative menu → spawn your friend as an NPC
+6. **Right-click NPC** → chat GUI opens → type message → NPC responds with friend's voice!
 
-### Integration Options:
+### Architecture:
 
-1. **Offline Mode** (Recommended for MVP): Download all data and run personality locally
-2. **Hybrid Mode** (Best UX): Store personality locally + call API for voice
+```
+Minecraft NPC Entity
+  ↓ (right-click)
+Custom Chat GUI
+  ↓ (player types message)
+Replik API (/api/speak)
+  ↓ (sends: userId, message, personality)
+Claude AI + Fish Audio
+  ↓ (returns: response text + audio URL)
+NPC speaks with friend's voice
+```
 
 ---
 
@@ -167,19 +187,379 @@ MinecraftMod/
 │   ├── main/
 │   │   ├── java/
 │   │   │   └── com/yourmod/replik/
-│   │   │       ├── ReplikMod.java
-│   │   │       ├── CloneManager.java
-│   │   │       ├── ReplikAPI.java
-│   │   │       └── AudioPlayer.java
+│   │   │       ├── ReplikMod.java              ← Main mod class
+│   │   │       ├── entity/
+│   │   │       │   ├── CloneNPCEntity.java     ← Custom NPC entity
+│   │   │       │   └── ModEntities.java        ← Entity registration
+│   │   │       ├── item/
+│   │   │       │   └── ModItems.java           ← Spawn egg registration
+│   │   │       ├── client/
+│   │   │       │   ├── gui/
+│   │   │       │   │   └── CloneChatScreen.java ← Chat GUI
+│   │   │       │   └── renderer/
+│   │   │       │       └── CloneNPCRenderer.java ← NPC skin/model
+│   │   │       ├── network/
+│   │   │       │   └── ModPackets.java         ← Client-server sync
+│   │   │       ├── api/
+│   │   │       │   ├── CloneManager.java       ← Load clone data
+│   │   │       │   ├── ReplikAPI.java          ← API client
+│   │   │       │   └── AudioPlayer.java        ← Voice playback
+│   │   │       └── util/
+│   │   │           └── CloneRegistry.java      ← Map clones to spawn eggs
 │   │   └── resources/
-│   │       └── clones/
-│   │           └── clone_data.json  ← Place exported JSON here
+│   │       ├── clones/
+│   │       │   ├── sam_clone.json              ← Friend's clone data
+│   │       │   ├── maya_clone.json
+│   │       │   └── alex_clone.json
+│   │       ├── assets/
+│   │       │   └── replik/
+│   │       │       ├── textures/
+│   │       │       │   ├── entity/
+│   │       │       │   │   └── clone_npc.png   ← NPC skin
+│   │       │       │   └── item/
+│   │       │       │       └── clone_spawn_egg.png
+│   │       │       └── models/
+│   │       │           └── entity/
+│   │       │               └── clone_npc.json  ← NPC model
+│   │       └── META-INF/
+│   │           └── mods.toml
 └── build.gradle
 ```
 
 ---
 
-## Step 3: Implement Clone Manager (Java)
+## Step 3: Register Custom NPC Entity
+
+### ModEntities.java - Register the NPC Entity Type
+
+```java
+package com.yourmod.replik.entity;
+
+import com.yourmod.replik.ReplikMod;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public class ModEntities {
+    public static final DeferredRegister<EntityType<?>> ENTITIES = 
+        DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, ReplikMod.MOD_ID);
+    
+    public static final RegistryObject<EntityType<CloneNPCEntity>> CLONE_NPC = 
+        ENTITIES.register("clone_npc", () -> 
+            EntityType.Builder.of(CloneNPCEntity::new, MobCategory.CREATURE)
+                .sized(0.6F, 1.95F) // Same as player
+                .clientTrackingRange(10)
+                .build("clone_npc")
+        );
+}
+```
+
+---
+
+## Step 4: Create the NPC Entity
+
+### CloneNPCEntity.java - The Custom NPC
+
+```java
+package com.yourmod.replik.entity;
+
+import com.yourmod.replik.api.CloneManager;
+import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.level.Level;
+import net.minecraft.nbt.CompoundTag;
+
+public class CloneNPCEntity extends PathfinderMob {
+    private String cloneId; // Which clone JSON to use
+    
+    public CloneNPCEntity(EntityType<? extends PathfinderMob> entityType, Level level) {
+        super(entityType, level);
+    }
+    
+    @Override
+    protected void registerGoals() {
+        // Basic AI behaviors (like villagers)
+        this.goalSelector.addGoal(0, new FloatGoal(this));
+        this.goalSelector.addGoal(1, new PanicGoal(this, 1.25D));
+        this.goalSelector.addGoal(2, new LookAtPlayerGoal(this, Player.class, 8.0F));
+        this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
+        this.goalSelector.addGoal(4, new WaterAvoidingRandomStrollGoal(this, 1.0D));
+    }
+    
+    @Override
+    public InteractionResult mobInteract(Player player, InteractionHand hand) {
+        // When right-clicked, open chat GUI
+        if (!this.level().isClientSide && hand == InteractionHand.MAIN_HAND) {
+            // Open chat GUI on client side
+            openChatGUI(player);
+            return InteractionResult.SUCCESS;
+        }
+        return InteractionResult.PASS;
+    }
+    
+    private void openChatGUI(Player player) {
+        // Send packet to client to open GUI
+        // (Handled by ModPackets)
+        ModPackets.sendOpenChatGUI(player, this.cloneId, this.getId());
+    }
+    
+    public void setCloneId(String cloneId) {
+        this.cloneId = cloneId;
+    }
+    
+    public String getCloneId() {
+        return this.cloneId;
+    }
+    
+    @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+        if (this.cloneId != null) {
+            tag.putString("CloneId", this.cloneId);
+        }
+    }
+    
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+        if (tag.contains("CloneId")) {
+            this.cloneId = tag.getString("CloneId");
+        }
+    }
+    
+    @Override
+    public boolean removeWhenFarAway(double distance) {
+        return false; // Don't despawn
+    }
+}
+```
+
+---
+
+## Step 5: Create Spawn Eggs
+
+### ModItems.java - Register Spawn Eggs
+
+```java
+package com.yourmod.replik.item;
+
+import com.yourmod.replik.ReplikMod;
+import com.yourmod.replik.entity.ModEntities;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.common.ForgeSpawnEggItem;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public class ModItems {
+    public static final DeferredRegister<Item> ITEMS = 
+        DeferredRegister.create(ForgeRegistries.ITEMS, ReplikMod.MOD_ID);
+    
+    // Spawn eggs for each clone
+    public static final RegistryObject<ForgeSpawnEggItem> SAM_CLONE_SPAWN_EGG = 
+        ITEMS.register("sam_clone_spawn_egg", () -> 
+            new CloneSpawnEggItem(ModEntities.CLONE_NPC, "sam", 0x3B82F6, 0x1E40AF)
+        );
+    
+    public static final RegistryObject<ForgeSpawnEggItem> MAYA_CLONE_SPAWN_EGG = 
+        ITEMS.register("maya_clone_spawn_egg", () -> 
+            new CloneSpawnEggItem(ModEntities.CLONE_NPC, "maya", 0xEC4899, 0x9333EA)
+        );
+    
+    public static final RegistryObject<ForgeSpawnEggItem> ALEX_CLONE_SPAWN_EGG = 
+        ITEMS.register("alex_clone_spawn_egg", () -> 
+            new CloneSpawnEggItem(ModEntities.CLONE_NPC, "alex", 0x10B981, 0x059669)
+        );
+}
+
+// Custom spawn egg that sets clone ID
+class CloneSpawnEggItem extends ForgeSpawnEggItem {
+    private final String cloneId;
+    
+    public CloneSpawnEggItem(RegistryObject<EntityType<CloneNPCEntity>> entity, 
+                             String cloneId, int bgColor, int fgColor) {
+        super(() -> entity.get(), bgColor, fgColor, new Item.Properties());
+        this.cloneId = cloneId;
+    }
+    
+    @Override
+    public InteractionResult useOn(UseOnContext context) {
+        InteractionResult result = super.useOn(context);
+        
+        // Set the clone ID after spawning
+        Level level = context.getLevel();
+        if (!level.isClientSide) {
+            // Find the just-spawned entity and set its clone ID
+            AABB searchBox = new AABB(context.getClickedPos()).inflate(2.0);
+            List<CloneNPCEntity> entities = level.getEntitiesOfClass(
+                CloneNPCEntity.class, searchBox
+            );
+            
+            if (!entities.isEmpty()) {
+                entities.get(0).setCloneId(this.cloneId);
+            }
+        }
+        
+        return result;
+    }
+}
+```
+
+---
+
+## Step 6: Create Chat GUI
+
+### CloneChatScreen.java - Minecraft-Style Chat Interface
+
+```java
+package com.yourmod.replik.client.gui;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.yourmod.replik.api.ReplikAPI;
+import com.yourmod.replik.api.CloneManager;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CloneChatScreen extends Screen {
+    private final String cloneId;
+    private final int entityId;
+    private EditBox inputBox;
+    private List<String> chatHistory = new ArrayList<>();
+    private ReplikAPI api;
+    private CloneManager cloneManager;
+    
+    public CloneChatScreen(String cloneId, int entityId) {
+        super(Component.literal("Chat with Clone"));
+        this.cloneId = cloneId;
+        this.entityId = entityId;
+        this.api = new ReplikAPI();
+        this.cloneManager = new CloneManager();
+    }
+    
+    @Override
+    protected void init() {
+        // Input box at bottom
+        this.inputBox = new EditBox(
+            this.font,
+            this.width / 2 - 150,
+            this.height - 40,
+            300,
+            20,
+            Component.literal("Type message...")
+        );
+        this.inputBox.setMaxLength(256);
+        this.addRenderableWidget(this.inputBox);
+        
+        // Send button
+        this.addRenderableWidget(Button.builder(
+            Component.literal("Send"),
+            button -> sendMessage()
+        )
+        .bounds(this.width / 2 + 160, this.height - 40, 60, 20)
+        .build());
+        
+        // Close button
+        this.addRenderableWidget(Button.builder(
+            Component.literal("Close"),
+            button -> this.onClose()
+        )
+        .bounds(this.width / 2 + 225, this.height - 40, 60, 20)
+        .build());
+    }
+    
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Dark background (like Minecraft menus)
+        this.renderBackground(graphics);
+        
+        // Title
+        graphics.drawCenteredString(
+            this.font,
+            "Chat with " + this.cloneManager.getClone(cloneId).name,
+            this.width / 2,
+            20,
+            0xFFFFFF
+        );
+        
+        // Chat history
+        int y = 50;
+        for (int i = Math.max(0, chatHistory.size() - 10); i < chatHistory.size(); i++) {
+            String message = chatHistory.get(i);
+            graphics.drawString(this.font, message, 20, y, 0xFFFFFF);
+            y += 12;
+        }
+        
+        super.render(graphics, mouseX, mouseY, partialTick);
+    }
+    
+    private void sendMessage() {
+        String message = this.inputBox.getValue().trim();
+        if (message.isEmpty()) return;
+        
+        // Add to chat history
+        chatHistory.add("§b[You]§f " + message);
+        this.inputBox.setValue("");
+        
+        // Get clone data
+        CloneManager.CloneData clone = cloneManager.getClone(cloneId);
+        
+        // Call Replik API (async)
+        new Thread(() -> {
+            try {
+                ReplikAPI.CloneResponse response = api.getCloneResponse(
+                    clone.userId,
+                    message,
+                    clone.personalityPrompt
+                );
+                
+                // Add response to chat history (on main thread)
+                minecraft.execute(() -> {
+                    chatHistory.add("§e[@" + clone.username + "]§f " + response.text);
+                    
+                    // Play voice audio
+                    if (response.audioUrl != null) {
+                        audioPlayer.playAudioFromUrl(response.audioUrl);
+                    }
+                });
+                
+            } catch (Exception e) {
+                minecraft.execute(() -> {
+                    chatHistory.add("§c[Error] Failed to get response");
+                });
+            }
+        }).start();
+    }
+    
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // Send on Enter key
+        if (keyCode == 257) { // Enter key
+            sendMessage();
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+    
+    @Override
+    public boolean isPauseScreen() {
+        return false; // Don't pause game
+    }
+}
+```
+
+---
+
+## Step 7: Implement Clone Manager (Java)
 
 ### CloneManager.java
 
@@ -271,7 +651,7 @@ public class CloneManager {
 
 ---
 
-## Step 4: Implement API Client (Java)
+## Step 8: Implement API Client (Java)
 
 ### ReplikAPI.java
 
@@ -335,7 +715,7 @@ public class ReplikAPI {
 
 ---
 
-## Step 5: Implement Audio Player (Java)
+## Step 9: Implement Audio Player (Java)
 
 ### AudioPlayer.java
 
@@ -382,82 +762,120 @@ public class AudioPlayer {
 
 ---
 
-## Step 6: Wire It All Together
+## Step 10: Wire It All Together
 
-### ReplikMod.java
+### ReplikMod.java - Main Mod Class
 
 ```java
 package com.yourmod.replik;
 
+import com.yourmod.replik.entity.ModEntities;
+import com.yourmod.replik.item.ModItems;
+import com.yourmod.replik.api.CloneManager;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.ServerChatEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 
-@Mod("replik_mod")
+@Mod("replik")
 public class ReplikMod {
-    private CloneManager cloneManager;
-    private ReplikAPI api;
-    private AudioPlayer audioPlayer;
+    public static final String MOD_ID = "replik";
+    private static CloneManager cloneManager;
     
     public ReplikMod() {
-        // Load multiple clones (your friends as NPCs!)
-        cloneManager = new CloneManager();
-        cloneManager.loadClone("sam", "./clones/sam_chen_clone.json");
-        cloneManager.loadClone("maya", "./clones/maya_rodriguez_clone.json");
-        cloneManager.loadClone("alex", "./clones/alex_johnson_clone.json");
+        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         
-        api = new ReplikAPI();
-        audioPlayer = new AudioPlayer();
+        // Register entities and items
+        ModEntities.ENTITIES.register(modEventBus);
+        ModItems.ITEMS.register(modEventBus);
+        
+        // Setup events
+        modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::clientSetup);
     }
     
-    @SubscribeEvent
-    public void onPlayerChat(ServerChatEvent event) {
-        String message = event.getMessage();
+    private void commonSetup(final FMLCommonSetupEvent event) {
+        // Load clone data from JSON files
+        cloneManager = new CloneManager();
+        cloneManager.loadClone("sam", "clones/sam_clone.json");
+        cloneManager.loadClone("maya", "clones/maya_clone.json");
+        cloneManager.loadClone("alex", "clones/alex_clone.json");
         
-        // Talk to different clones using @username
-        // Example: "@sam how do I beat the Ender Dragon?"
-        if (message.startsWith("@")) {
-            String[] parts = message.substring(1).split(" ", 2);
-            if (parts.length < 2) return;
-            
-            String cloneName = parts[0].toLowerCase();
-            String input = parts[1];
-            
-            // Get the clone
-            CloneManager.CloneData clone = cloneManager.getClone(cloneName);
-            if (clone == null) {
-                event.getPlayer().sendMessage(
-                    Component.literal("§c[Error]§f Clone not found: " + cloneName)
-                );
-                return;
-            }
-            
-            // Call API with clone's personality
-            ReplikAPI.CloneResponse response = api.getCloneResponse(
-                clone.userId,
-                input,
-                clone.personalityPrompt
-            );
-            
-            // Display response in chat
-            event.getPlayer().sendMessage(
-                Component.literal("§b[@" + clone.username + "]§f " + response.text)
-            );
-            
-            // Play voice audio
-            if (response.audioUrl != null) {
-                audioPlayer.playAudioFromUrl(response.audioUrl);
-            }
-            
-            event.setCanceled(true);
+        System.out.println("✅ Replik mod loaded with " + cloneManager.getCloneCount() + " clones");
+    }
+    
+    private void clientSetup(final FMLClientSetupEvent event) {
+        // Register entity renderers
+        event.enqueueWork(() -> {
+            EntityRenderers.register(ModEntities.CLONE_NPC.get(), CloneNPCRenderer::new);
+        });
+    }
+    
+    public static CloneManager getCloneManager() {
+        return cloneManager;
+    }
+}
+```
+
+### ModPackets.java - Network Communication
+
+```java
+package com.yourmod.replik.network;
+
+import com.yourmod.replik.client.gui.CloneChatScreen;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.network.NetworkEvent;
+import java.util.function.Supplier;
+
+public class ModPackets {
+    
+    // Packet to open chat GUI on client
+    public static class OpenChatGUIPacket {
+        private final String cloneId;
+        private final int entityId;
+        
+        public OpenChatGUIPacket(String cloneId, int entityId) {
+            this.cloneId = cloneId;
+            this.entityId = entityId;
         }
+        
+        public static void encode(OpenChatGUIPacket packet, FriendlyByteBuf buf) {
+            buf.writeUtf(packet.cloneId);
+            buf.writeInt(packet.entityId);
+        }
+        
+        public static OpenChatGUIPacket decode(FriendlyByteBuf buf) {
+            return new OpenChatGUIPacket(buf.readUtf(), buf.readInt());
+        }
+        
+        public static void handle(OpenChatGUIPacket packet, Supplier<NetworkEvent.Context> ctx) {
+            ctx.get().enqueueWork(() -> {
+                // Open GUI on client side
+                Minecraft.getInstance().setScreen(
+                    new CloneChatScreen(packet.cloneId, packet.entityId)
+                );
+            });
+            ctx.get().setPacketHandled(true);
+        }
+    }
+    
+    public static void sendOpenChatGUI(ServerPlayer player, String cloneId, int entityId) {
+        // Send packet to client
+        // (Network registration code omitted for brevity)
+        PacketHandler.INSTANCE.send(
+            PacketDistributor.PLAYER.with(() -> player),
+            new OpenChatGUIPacket(cloneId, entityId)
+        );
     }
 }
 ```
 
 ---
 
-## Step 7: Deploy Replik API (For Hybrid Mode)
+## Step 11: Deploy Replik API (Backend)
 
 ### Railway Deployment:
 
@@ -477,28 +895,56 @@ public class ReplikMod {
 
 ---
 
-## Step 8: Usage in Minecraft
+## Step 12: Usage in Minecraft
 
-### In-Game Commands:
+### In-Game Flow:
 
+1. **Open Creative Mode** → Search for spawn eggs:
+   - "Sam's Clone Spawn Egg" (blue)
+   - "Maya's Clone Spawn Egg" (pink)
+   - "Alex's Clone Spawn Egg" (green)
+
+2. **Right-click ground** → NPC spawns (looks like a player)
+
+3. **Right-click NPC** → Chat GUI opens (Minecraft-style interface)
+
+4. **Type your message** → Press Enter
+
+5. **NPC responds:**
+   - Text appears in chat history
+   - Voice plays through speakers (Fish Audio TTS)
+   - NPC looks at you while talking
+
+### Example Conversations:
+
+**With Sam's Clone:**
 ```
-Player: @sam how do I defeat the Ender Dragon?
-Sam's Clone: [@techie_sam] Oh, I'd probably cheese it with beds tbh. 
-             Quick, effective, and kinda funny. 🎧
+[You] how do I defeat the Ender Dragon?
+[@techie_sam] Oh, I'd probably cheese it with beds tbh. 
+              Quick, effective, and kinda funny. 🎧
+```
 
-Player: @maya what should I build next?
-Maya's Clone: [@artist_maya] Ooh, how about a floating crystal palace? 
-              Something with lots of stained glass and waterfalls! 🎨
+**With Maya's Clone:**
+```
+[You] what should I build next?
+[@artist_maya] Ooh, how about a floating crystal palace? 
+               Something with lots of stained glass and waterfalls! 🎨
+```
 
-Player: @alex best Minecraft mods?
-Alex's Clone: [@gamer_alex] Dude, definitely try Create mod. 
+**With Alex's Clone:**
+```
+[You] best Minecraft mods?
+[@gamer_alex] Dude, definitely try Create mod. 
               Mechanical contraptions are insanely satisfying. ⚙️
 ```
 
-Each clone will:
-1. ✅ Respond with THEIR personality (from their context entries)
-2. ✅ Use THEIR voice (synthesized via Fish Audio)
-3. ✅ Match THEIR emotional tone (via Claude AI)
+### What Makes It Special:
+
+1. ✅ **Persistent NPCs** - They stay in your world, don't despawn
+2. ✅ **Real personalities** - Responds exactly how your friend would
+3. ✅ **Real voices** - Speaks with your friend's actual voice
+4. ✅ **Basic AI** - Walks around, looks at you, avoids water
+5. ✅ **Multiple clones** - Spawn as many friends as you want!
 
 **You're literally talking to your friends inside Minecraft!** 🤯
 
