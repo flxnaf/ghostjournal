@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
         name: true,
         bio: true,
         createdAt: true,
-        voiceModelId: true // To show if voice is trained
+        voiceModelId: true, // To show if voice is trained
+        photoUrls: true // Profile photo
       },
       orderBy: {
         createdAt: 'desc'
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
       bio: user.bio,
       createdAt: user.createdAt.toISOString(),
       isPublic: true,
-      hasVoiceModel: !!user.voiceModelId
+      hasVoiceModel: !!user.voiceModelId,
+      photoUrls: user.photoUrls
     }))
 
     console.log(`✅ Returning ${clones.length} public clones`)

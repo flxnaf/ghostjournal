@@ -11,7 +11,7 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, faceContours, contexts } = body
+    const { userId, faceContours, contexts, photoUrl } = body
 
     if (!userId) {
       return NextResponse.json(
@@ -32,8 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    console.log('🎭 Updating user with face model and contexts:', userId)
+    console.log('🎭 Updating user with face model, photo, and contexts:', userId)
     console.log(`   Received ${faceContours.length} face contours`)
+    console.log(`   Profile photo URL: ${photoUrl || 'None'}`)
 
     // Log sample contour data to verify it's not defaulting
     const jawline = faceContours.find((c: any) => c.name === 'jawline')
@@ -70,15 +71,16 @@ export async function POST(request: NextRequest) {
       console.error('   ⚠️  No hair contour found!')
     }
 
-    // Store face contours in database
+    // Store face contours and photo URL in database
     await prisma.user.update({
       where: { id: userId },
       data: {
         faceData: JSON.stringify({ contours: faceContours }),
+        photoUrls: photoUrl ? JSON.stringify([photoUrl]) : null,
       }
     })
 
-    console.log('✅ Face model stored in database')
+    console.log('✅ Face model and photo stored in database')
 
     // Store contexts as memories
     console.log('💾 Storing initial contexts as memories...')

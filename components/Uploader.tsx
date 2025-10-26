@@ -272,18 +272,40 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
       setProcessingFace(false)
       setProgress(50)
 
-      console.log('📤 Step 3: Uploading face data and initial context...')
+      console.log('📤 Step 3: Uploading face data, photo, and initial context...')
 
-      // Send personalized face contours and initial context to API
+      // Upload the front photo to Supabase Storage
+      const frontPhoto = photos[0] // Front-facing photo
+      let photoUrl = null
+      
+      if (frontPhoto) {
+        console.log('📸 Uploading profile photo to Supabase...')
+        const formData = new FormData()
+        formData.append('photo', frontPhoto)
+        formData.append('userId', userId)
+        
+        try {
+          const photoResponse = await axios.post('/api/upload-photo', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+          photoUrl = photoResponse.data.photoUrl
+          console.log('✅ Profile photo uploaded:', photoUrl)
+        } catch (photoError) {
+          console.error('⚠️ Failed to upload photo, continuing without it:', photoError)
+        }
+      }
+
+      // Send personalized face contours, photo URL, and initial context to API
       const response = await axios.post('/api/update-user', {
         userId,
         faceContours: personalizedFace,
-        contexts
+        contexts,
+        photoUrl
       }, {
         headers: { 'Content-Type': 'application/json' }
       })
 
-      console.log('✅ Face model and initial context uploaded!')
+      console.log('✅ Face model, photo, and initial context uploaded!')
       setProgress(100)
       
       // Brief pause to show completion, then proceed

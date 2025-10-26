@@ -25,6 +25,19 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
     setIsPublic(user.isPublic || false)
   }, [user.isPublic])
 
+  // Get profile photo URL
+  const getProfilePhotoUrl = () => {
+    if (!user.photoUrls) return null
+    try {
+      const photoUrls = JSON.parse(user.photoUrls)
+      return Array.isArray(photoUrls) && photoUrls.length > 0 ? photoUrls[0] : null
+    } catch {
+      return null
+    }
+  }
+  
+  const profilePhotoUrl = getProfilePhotoUrl()
+
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
     try {
@@ -81,7 +94,15 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
                      hover:border-white/50 transition-all"
           >
             <div className="mb-4">
-              <User className="w-16 h-16 text-white" />
+              {profilePhotoUrl ? (
+                <img 
+                  src={profilePhotoUrl} 
+                  alt="Profile" 
+                  className="w-24 h-24 rounded-full object-cover border-2 border-white/30"
+                />
+              ) : (
+                <User className="w-16 h-16 text-white" />
+              )}
             </div>
             <h2 className="text-3xl font-bold text-white mb-3">
               My Clone Model

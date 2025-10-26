@@ -191,9 +191,28 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
             >
               <div className="flex items-start gap-4 mb-4">
                 {/* Avatar */}
-                <div className="w-16 h-16 bg-gradient-to-br from-white/20 to-white/5 
-                              rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-8 h-8 text-white/70" />
+                <div className="w-16 h-16 rounded-full flex-shrink-0 overflow-hidden border-2 border-white/30">
+                  {clone.photoUrls ? (
+                    <img 
+                      src={JSON.parse(clone.photoUrls)[0]} 
+                      alt={clone.username || clone.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        const parent = target.parentElement
+                        if (parent) {
+                          parent.className = 'w-16 h-16 bg-gradient-to-br from-white/20 to-white/5 rounded-full flex items-center justify-center flex-shrink-0'
+                          parent.innerHTML = '<svg class="w-8 h-8 text-white/70" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-white/20 to-white/5 flex items-center justify-center">
+                      <User className="w-8 h-8 text-white/70" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
