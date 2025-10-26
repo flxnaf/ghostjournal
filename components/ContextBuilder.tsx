@@ -161,9 +161,9 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       {/* Header with Download Button */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-white mb-2">Build Your Clone's Context</h2>
+          <h2 className="text-3xl font-bold text-white mb-2">Build Your Clone Model</h2>
           <p className="text-gray-400">
-            Add stories, habits, and personality traits to make your clone more accurate
+            Add stories, habits, and personality traits to train your digital clone
           </p>
         </div>
         <motion.button
@@ -287,8 +287,8 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       {/* Info Box */}
       <div className="bg-dark-bg border border-white/20 rounded-lg p-4">
         <p className="text-sm text-gray-300">
-          <strong className="text-white">💡 Tip:</strong> The more context you add, the more accurate your AI clone will be. 
-          Export includes audio training data, voice model ID, face data, and all personality context.
+          <strong className="text-white">💡 Tip:</strong> The more context you add, the more accurate your clone model will be. 
+          Export includes audio training data, voice model ID, face data, and all personality context for Minecraft integration.
         </p>
       </div>
     </div>

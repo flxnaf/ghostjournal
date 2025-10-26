@@ -42,7 +42,7 @@ export default function LandingPage() {
       // Create a fake admin user session
       const adminUser = {
         id: 'admin-' + Date.now(),
-        email: 'admin@ghostjournal.local',
+        email: 'admin@replik.local',
         username: 'admin',
         name: 'Admin User',
         createdAt: new Date().toISOString()
@@ -84,7 +84,7 @@ export default function LandingPage() {
           className="text-7xl font-bold mb-4 glow-text cursor-pointer select-none"
           title="Click 5 times for admin login"
         >
-          GhostJournal
+          Replik
         </motion.h1>
         
         <motion.p
@@ -93,7 +93,7 @@ export default function LandingPage() {
           transition={{ delay: 0.1 }}
           className="text-2xl text-gray-300 mb-12"
         >
-          Your AI Clone
+          Create Your Digital Clone
         </motion.p>
 
         <motion.button

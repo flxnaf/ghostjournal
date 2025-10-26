@@ -90,9 +90,9 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-white mb-4">Browse AI Clones</h1>
+        <h1 className="text-4xl font-bold text-white mb-4">Browse Clone Models</h1>
         <p className="text-gray-400 text-lg">
-          Discover and chat with other people's AI clones
+          Discover and interact with other people's digital clones
         </p>
       </div>
 
@@ -119,7 +119,7 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
         {filteredClones.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <p className="text-gray-400 text-lg">
-              {searchQuery ? 'No clones found matching your search' : 'No public clones available yet'}
+              {searchQuery ? 'No clone models found matching your search' : 'No public clone models available yet'}
             </p>
           </div>
         ) : (

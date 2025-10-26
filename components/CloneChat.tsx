@@ -24,7 +24,7 @@ export default function CloneChat({ userId }: CloneChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hey! I'm your AI clone. Talk to me like you'd talk to yourself - I'll respond exactly how YOU would. You can also update my knowledge:\n• Say 'I have new stories: [story]' to add context\n• Ask 'How would you respond to [scenario]?' for specific reactions"
+      content: "Hey! I'm your digital clone. Talk to me like you'd talk to yourself - I'll respond exactly how YOU would. You can also update my knowledge:\n• Say 'I have new stories: [story]' to add context\n• Ask 'How would you respond to [scenario]?' for specific reactions"
     }
   ])
   const [input, setInput] = useState('')

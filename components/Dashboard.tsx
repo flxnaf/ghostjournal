@@ -38,10 +38,10 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones }: D
           >
             <div className="text-6xl mb-4">🎭</div>
             <h2 className="text-3xl font-bold text-white mb-3">
-              My Character
+              My Clone Model
             </h2>
             <p className="text-gray-400 mb-4">
-              Create or edit your AI clone. Add context, train your voice, and customize your personality.
+              Create or edit your digital clone. Train your voice, upload your appearance, and build your personality model.
             </p>
             <div className="flex items-center text-white font-medium">
               <span>Get Started</span>
@@ -61,10 +61,10 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones }: D
           >
             <div className="text-6xl mb-4">🔍</div>
             <h2 className="text-3xl font-bold text-white mb-3">
-              Browse Clones
+              Browse Clone Models
             </h2>
             <p className="text-gray-400 mb-4">
-              Discover and chat with other people's AI clones. Search by username or explore featured clones.
+              Discover and interact with other people's digital clones. Search by username or explore featured models.
             </p>
             <div className="flex items-center text-white font-medium">
               <span>Explore</span>
