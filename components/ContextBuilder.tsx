@@ -94,18 +94,46 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
     }
   }
 
-  const downloadJSON = () => {
+  const downloadJSON = async () => {
+    // Fetch additional user data (audio, voice model, face data)
+    let userData: any = {}
+    try {
+      const response = await axios.get(`/api/personality?userId=${userId}`)
+      userData = response.data
+    } catch (error) {
+      console.log('Could not fetch additional user data, exporting context only')
+    }
+
     const jsonData = {
       userId,
       exportDate: new Date().toISOString(),
-      entries: entries.map(e => ({
-        category: e.category,
-        content: e.content,
-        timestamp: e.timestamp
-      })),
-      metadata: {
+      
+      // Context entries (stories, habits, etc.)
+      context: {
+        entries: entries.map(e => ({
+          category: e.category,
+          content: e.content,
+          timestamp: e.timestamp
+        })),
         totalEntries: entries.length,
         categories: [...new Set(entries.map(e => e.category))]
+      },
+      
+      // Audio training data (for Minecraft mod)
+      audioData: {
+        audioUrl: userData.audioUrl || null,
+        voiceModelId: userData.voiceModelId || null,
+        voiceModelProvider: 'fish-audio', // Or whatever provider you use
+      },
+      
+      // Face/appearance data
+      faceData: userData.faceData ? JSON.parse(userData.faceData) : null,
+      
+      // User metadata
+      metadata: {
+        name: userData.name || 'Unknown',
+        email: userData.email || null,
+        createdAt: userData.createdAt || new Date().toISOString()
       }
     }
 
@@ -113,7 +141,7 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `clone-context-${userId}-${Date.now()}.json`
+    a.download = `clone-data-${userId}-${Date.now()}.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -147,7 +175,7 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
                    hover:bg-white hover:text-black transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          📥 Export for Minecraft
+          📥 Export JSON
         </motion.button>
       </div>
 
