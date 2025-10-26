@@ -12,6 +12,7 @@ interface Clone {
   bio?: string
   createdAt: string
   isPublic: boolean
+  photoUrls?: string | null
 }
 
 interface CloneBrowserProps {
