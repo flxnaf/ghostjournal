@@ -176,6 +176,7 @@ object TwinCommands {
     }
 
     /**
+     * Send a message to a twin and play voice response
      * Send a message to a twin
      */
     private fun chatWithTwin(context: CommandContext<ServerCommandSource>, name: String, message: String) {
@@ -212,6 +213,26 @@ object TwinCommands {
                         Text.literal("§b[${twinData.display_name}]§f ${response.text}"),
                         false
                     )
+
+                    // NEW: Play voice audio if available
+                    if (!response.audioUrl.isNullOrEmpty()) {
+                        // Build full URL if it's a relative path
+                        val fullAudioUrl = if (response.audioUrl.startsWith("http")) {
+                            response.audioUrl
+                        } else {
+                            // Extract base URL from api_endpoint
+                            val baseUrl = twinData.api_endpoint.replace("/api/speak", "")
+                            "$baseUrl${response.audioUrl}"
+                        }
+
+                        player.sendMessage(
+                            Text.literal("§a🔊 Playing voice..."),
+                            false
+                        )
+
+                        // Play audio in background
+                        TwinAudioPlayer.playAudioFromUrl(fullAudioUrl)
+                    }
                 }
             } catch (e: Exception) {
                 player.server.execute {
