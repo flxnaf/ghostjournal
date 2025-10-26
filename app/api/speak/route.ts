@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
       console.log('✅ User found')
+      console.log('🎤 User voiceModelId:', user.voiceModelId || 'NULL (will use default)')
     }
 
     // Check for keyword commands to update context
@@ -484,14 +485,14 @@ async function generateVoice(
     const user = await prisma.user.findUnique({ where: { id: userId } })
     
     // Determine which reference to use
-    let referenceId = '802e3bc2b27e49c2995d23ef70e6ac89' // Default voice
+    let referenceId = 'af1ddb5dc0e644ebb16b58ed466e27c6' // Default neutral English voice
     
     if (voiceModelId && !voiceModelId.startsWith('mock_')) {
       // Use the trained S1 model (HIGH QUALITY)
       referenceId = voiceModelId
       console.log('✅ Using trained S1 voice model:', referenceId.substring(0, 20))
     } else {
-      console.log('⚠️ Using default voice (no trained model yet)')
+      console.log('⚠️ Using default neutral voice (no trained model yet)')
     }
     
     // Create TTS request with trained model

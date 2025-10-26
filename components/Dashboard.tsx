@@ -13,7 +13,7 @@ interface DashboardProps {
   onReRecordVoice?: () => void
 }
 
-export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout }: DashboardProps) {
+export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout, onReRecordVoice }: DashboardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPublic, setIsPublic] = useState(user.isPublic || false)
@@ -158,12 +158,30 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
           </div>
         </motion.div>
 
+        {/* Re-record Voice Button */}
+        {onReRecordVoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-8 text-center"
+          >
+            <button
+              onClick={onReRecordVoice}
+              className="px-6 py-2 text-sm text-blue-400 border border-blue-400/30 rounded-lg
+                       hover:bg-blue-400/10 transition-colors"
+            >
+              Re-record Voice
+            </button>
+          </motion.div>
+        )}
+
         {/* Delete Account Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 text-center"
+          transition={{ delay: 0.5 }}
+          className="mt-4 text-center"
         >
           <button
             onClick={() => setShowDeleteConfirm(true)}
