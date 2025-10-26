@@ -524,30 +524,88 @@ async function generateVoice(
   console.log('🧹 Cleaned text:', cleanedText.substring(0, 100))
 
   try {
-    console.log('📤 Calling Fish Audio TTS with trained model...')
-    
-    // Get user's voice model ID
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    
-    // Determine which reference to use
-    let referenceId = 'af1ddb5dc0e644ebb16b58ed466e27c6' // Default neutral English voice
-    
-    if (voiceModelId && !voiceModelId.startsWith('mock_')) {
-      // Use the trained S1 model (HIGH QUALITY)
-      referenceId = voiceModelId
-      console.log('✅ Using trained S1 voice model:', referenceId.substring(0, 20))
-    } else {
-      console.log('⚠️ Using default neutral voice (no trained model yet)')
-    }
-    
-    // Create TTS request with trained model
+    console.log('📤 Preparing Fish Audio TTS payload...')
+
+    const DEFAULT_VOICE_ID = process.env.FISH_DEFAULT_VOICE_ID || 'af1ddb5dc0e644ebb16b58ed466e27c6'
+    const DEFAULT_REFERENCE_TEXT = process.env.FISH_REFERENCE_TEXT ||
+      'I walk through the park every morning before work. The trees sway gently in the breeze, and birds sing their morning songs. Sometimes I stop to watch a squirrel gather nuts or see dew glistening on spider webs. These quiet moments help me start my day with a clear mind.'
+
+    const userRecord = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        audioUrl: true,
+        voiceModelId: true,
+        name: true
+      }
+    })
+
+    console.log('   DB voiceModelId:', userRecord?.voiceModelId || 'NULL')
+    console.log('   DB audioUrl:', userRecord?.audioUrl || 'NULL')
+
+    const trainedVoiceId = (() => {
+      const candidate = voiceModelId || userRecord?.voiceModelId || null
+      if (candidate && !candidate.startsWith('mock_')) {
+        return candidate
+      }
+      return null
+    })()
+
     const FormData = require('form-data')
     const formData = new FormData()
-    
-    formData.append('text', cleanedText) // Use cleaned text
-    formData.append('reference_id', referenceId) // Trained model ID or default
+
+    formData.append('text', cleanedText)
     formData.append('format', 'mp3')
-    
+
+    let usingReferenceAudio = false
+
+    if (trainedVoiceId) {
+      console.log('✅ Using trained voice model for TTS:', trainedVoiceId.substring(0, 20))
+      formData.append('voice_id', trainedVoiceId)
+    } else {
+      console.log('⚠️ No trained voice model detected, attempting on-the-fly cloning')
+
+      const audioSource = userRecord?.audioUrl || null
+
+      if (audioSource) {
+        try {
+          console.log('🎤 Fetching reference audio for cloning...')
+          let referenceBuffer: Buffer | null = null
+
+          if (audioSource.startsWith('http')) {
+            const download = await axios.get(audioSource, {
+              responseType: 'arraybuffer',
+              timeout: 15000
+            })
+            referenceBuffer = Buffer.from(download.data)
+          } else {
+            const localPath = join(process.cwd(), 'public', audioSource)
+            referenceBuffer = await readFile(localPath)
+          }
+
+          if (referenceBuffer && referenceBuffer.length > 0) {
+            formData.append('reference_audio', referenceBuffer, {
+              filename: 'reference.webm',
+              contentType: 'audio/webm'
+            })
+            formData.append('reference_text', DEFAULT_REFERENCE_TEXT)
+            usingReferenceAudio = true
+            console.log('✅ Added reference audio for on-the-fly cloning (bytes:', referenceBuffer.length, ')')
+          } else {
+            console.warn('⚠️ Reference audio buffer empty, skipping cloning payload')
+          }
+        } catch (referenceError: any) {
+          console.warn('⚠️ Failed to load reference audio:', referenceError?.message || referenceError)
+        }
+      } else {
+        console.log('⚠️ No stored reference audio found for user; using fallback voice')
+      }
+
+      if (!usingReferenceAudio) {
+        console.log('🎙️ Falling back to default Fish voice ID:', DEFAULT_VOICE_ID)
+        formData.append('voice_id', DEFAULT_VOICE_ID)
+      }
+    }
+
     const response = await axios.post(
       'https://api.fish.audio/v1/tts',
       formData,
@@ -562,7 +620,8 @@ async function generateVoice(
     )
 
     // Upload audio to Supabase Storage
-    const filename = `${userId}/response_${Date.now()}.mp3`
+    const timestamp = Date.now()
+    const filename = `${userId}/response_${timestamp}.mp3`
     const audioBuffer = Buffer.from(response.data)
     
     console.log('📤 Uploading audio to Supabase Storage...')
@@ -576,10 +635,10 @@ async function generateVoice(
     if (!supabaseUrl || !serviceRoleKey) {
       console.warn('⚠️ Supabase not configured - saving to local filesystem')
       const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
-      const audioPath = join(uploadDir, `response_${Date.now()}.mp3`)
+      const audioPath = join(uploadDir, `response_${timestamp}.mp3`)
       await mkdir(uploadDir, { recursive: true })
       await writeFile(audioPath, audioBuffer)
-      return `/uploads/${userId}/response_${Date.now()}.mp3`
+      return `/uploads/${userId}/response_${timestamp}.mp3`
     }
     
     // Create admin Supabase client (bypasses RLS)
