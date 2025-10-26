@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
+import { Download, Heart } from 'lucide-react'
 
 interface ContextBuilderProps {
   userId: string
@@ -227,9 +228,10 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
           disabled={entries.length === 0}
           className="px-6 py-3 bg-transparent border-2 border-white text-white font-bold rounded-lg
                    hover:bg-white hover:text-black transition-colors
-                   disabled:opacity-50 disabled:cursor-not-allowed"
+                   disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          📥 Export JSON
+          <Download className="w-5 h-5" />
+          Export JSON
         </motion.button>
       </div>
 

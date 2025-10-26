@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User created/updated:', user.id)
 
-    // Upload audio to Supabase Storage (pass authenticated client)
+    // Upload audio to Supabase Storage (uses service role key internally)
     console.log('📤 Uploading audio to Supabase Storage...')
-    const audioUrl = await uploadAudio(authUser.id, audio, supabase)
+    const audioUrl = await uploadAudio(authUser.id, audio)
     console.log('✅ Audio uploaded:', audioUrl)
 
     // Update user with audio URL

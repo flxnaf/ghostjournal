@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
+import { Search, MessageCircle, Download, User } from 'lucide-react'
 
 interface Clone {
   userId: string
@@ -165,13 +166,13 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
                      placeholder-gray-500"
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
-            🔍
+            <Search className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Clone Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClones.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <p className="text-gray-400 text-lg">
@@ -185,47 +186,52 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ scale: 1.02 }}
-              onClick={() => onSelectClone(clone.userId)}
               className="bg-dark-surface rounded-xl p-6 border border-white/20
-                       hover:border-white/40 cursor-pointer transition-all glow-border"
+                       hover:border-white/40 transition-all glow-border"
             >
-              {/* Avatar */}
-              <div className="w-20 h-20 bg-gradient-to-br from-white/20 to-white/5 
-                            rounded-full flex items-center justify-center mb-4 mx-auto">
-                <span className="text-3xl">👤</span>
-              </div>
+              <div className="flex items-start gap-4 mb-4">
+                {/* Avatar */}
+                <div className="w-16 h-16 bg-gradient-to-br from-white/20 to-white/5 
+                              rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-8 h-8 text-white/70" />
+                </div>
 
-              {/* Info */}
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-1">
-                  {clone.name || clone.username}
-                </h3>
-                <p className="text-sm text-gray-400 mb-3">
-                  @{clone.username}
-                </p>
-                {clone.bio && (
-                  <p className="text-sm text-gray-300 mb-4 line-clamp-2">
-                    {clone.bio}
-                  </p>
-                )}
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <span>Created {new Date(clone.createdAt).toLocaleDateString()}</span>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold text-white mb-1 truncate">
+                    {clone.name || clone.username}
+                  </h3>
+                  {clone.username && clone.username !== 'unknown' && (
+                    <p className="text-sm text-gray-400 truncate">
+                      @{clone.username}
+                    </p>
+                  )}
                 </div>
               </div>
 
+              {clone.bio && (
+                <p className="text-sm text-gray-300 mb-4 line-clamp-2">
+                  {clone.bio}
+                </p>
+              )}
+
               {/* Actions */}
-              <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
-                <button className="w-full py-2 bg-white/10 hover:bg-white/20 
-                                 text-white font-medium rounded-lg transition-colors">
-                  💬 Chat with Clone
+              <div className="flex gap-2 pt-4 border-t border-white/10">
+                <button 
+                  onClick={() => onSelectClone(clone.userId)}
+                  className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 
+                           text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Chat</span>
                 </button>
                 <button
                   onClick={(e) => downloadClone(clone, e)}
-                  className="w-full py-2 bg-white/5 hover:bg-white/10 
-                           text-white/80 font-medium rounded-lg transition-colors
-                           border border-white/20 hover:border-white/40"
+                  className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 
+                           text-white font-semibold rounded-lg transition-colors
+                           border border-white/30 hover:border-white/50 flex items-center justify-center gap-2"
                 >
-                  📥 Download for Minecraft
+                  <Download className="w-4 h-4" />
+                  <span>Download</span>
                 </button>
               </div>
             </motion.div>
