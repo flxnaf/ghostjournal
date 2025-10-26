@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import Anthropic from '@anthropic-ai/sdk'
 import axios from 'axios'
-import { writeFile, readFile } from 'fs/promises'
+import { writeFile, readFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 
 const prisma = new PrismaClient()
@@ -498,12 +498,21 @@ async function generateVoice(
     const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
     const audioPath = join(uploadDir, filename)
     
+    // Create directory if it doesn't exist
+    await mkdir(uploadDir, { recursive: true })
     await writeFile(audioPath, Buffer.from(response.data))
 
+    console.log('✅ Audio saved to:', `/uploads/${userId}/${filename}`)
     return `/uploads/${userId}/${filename}`
 
   } catch (error: any) {
-    console.error('Fish Audio TTS error:', error.response?.data || error.message)
+    console.error('❌ Fish Audio TTS error:', error)
+    console.error('   Status:', error.response?.status)
+    console.error('   Data:', error.response?.data)
+    console.error('   Message:', error.message)
+    
+    // Return empty string - will fallback to browser TTS
+    console.warn('⚠️ Falling back to browser TTS')
     return ''
   }
 }
