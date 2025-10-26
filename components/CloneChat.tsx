@@ -350,6 +350,10 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
       
       // Send message to API
       console.log('📡 Calling /api/speak...')
+      console.log('📤 Sending message to /api/speak:')
+      console.log('   userId:', userId)
+      console.log('   message:', input.substring(0, 50))
+      
       const response = await axios.post('/api/speak', {
         userId,
         message: input,
@@ -361,9 +365,17 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
         }
       })
 
-      console.log('✅ Received response:', response.data)
-      console.log('   Text:', response.data.text?.substring(0, 100))
+      console.log('═══════════════════════════════════════════════')
+      console.log('✅ /api/speak RESPONSE RECEIVED')
+      console.log('   Full response:', JSON.stringify(response.data).substring(0, 200))
+      console.log('   Text length:', response.data.text?.length || 0)
+      console.log('   Text preview:', response.data.text?.substring(0, 100))
       console.log('   Audio URL:', response.data.audioUrl)
+      console.log('   Audio URL type:', typeof response.data.audioUrl)
+      console.log('   Audio URL length:', response.data.audioUrl?.length || 0)
+      console.log('   Is URL absolute?:', response.data.audioUrl?.startsWith('http'))
+      console.log('   Is URL relative?:', response.data.audioUrl?.startsWith('/'))
+      console.log('═══════════════════════════════════════════════')
 
       const assistantMessage: Message = {
         role: 'assistant',
