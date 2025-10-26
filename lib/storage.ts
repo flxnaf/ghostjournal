@@ -21,24 +21,58 @@ export async function uploadAudio(userId: string, audioFile: Blob): Promise<stri
 
   const fileName = `${userId}/recording-${Date.now()}.webm`
 
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKETS.AUDIO)
-    .upload(fileName, audioFile, {
-      contentType: 'audio/webm',
-      upsert: true,
-    })
+  try {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKETS.AUDIO)
+      .upload(fileName, audioFile, {
+        contentType: 'audio/webm',
+        upsert: true,
+      })
 
-  if (error) {
-    console.error('Error uploading audio:', error)
-    throw new Error(`Failed to upload audio: ${error.message}`)
+    if (error) {
+      console.error('⚠️ Supabase Storage error:', error)
+      console.log('📁 Falling back to local filesystem storage...')
+      
+      // Fallback to local filesystem
+      return await uploadAudioLocal(userId, audioFile)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKETS.AUDIO)
+      .getPublicUrl(fileName)
+
+    return urlData.publicUrl
+  } catch (error: any) {
+    console.error('⚠️ Supabase Storage connection error:', error.message)
+    console.log('📁 Falling back to local filesystem storage...')
+    return await uploadAudioLocal(userId, audioFile)
   }
+}
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from(STORAGE_BUCKETS.AUDIO)
-    .getPublicUrl(fileName)
-
-  return urlData.publicUrl
+/**
+ * Fallback: Upload audio to local filesystem (for development/Railway)
+ */
+async function uploadAudioLocal(userId: string, audioFile: Blob): Promise<string> {
+  const { writeFile, mkdir } = await import('fs/promises')
+  const { join } = await import('path')
+  
+  const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+  const fileName = `recording-${Date.now()}.webm`
+  const filePath = join(uploadDir, fileName)
+  
+  // Create directory if it doesn't exist
+  await mkdir(uploadDir, { recursive: true })
+  
+  // Convert Blob to Buffer
+  const arrayBuffer = await audioFile.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  
+  // Write file
+  await writeFile(filePath, buffer)
+  
+  // Return relative URL
+  return `/uploads/${userId}/${fileName}`
 }
 
 /**
@@ -57,24 +91,56 @@ export async function uploadPhoto(
 
   const fileName = `${userId}/photo-${index}-${Date.now()}.jpg`
 
-  const { data, error } = await supabase.storage
-    .from(STORAGE_BUCKETS.PHOTOS)
-    .upload(fileName, photoFile, {
-      contentType: 'image/jpeg',
-      upsert: true,
-    })
+  try {
+    const { data, error } = await supabase.storage
+      .from(STORAGE_BUCKETS.PHOTOS)
+      .upload(fileName, photoFile, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      })
 
-  if (error) {
-    console.error('Error uploading photo:', error)
-    throw new Error(`Failed to upload photo: ${error.message}`)
+    if (error) {
+      console.error('⚠️ Supabase Storage error:', error)
+      console.log('📁 Falling back to local filesystem storage...')
+      return await uploadPhotoLocal(userId, photoFile, index)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKETS.PHOTOS)
+      .getPublicUrl(fileName)
+
+    return urlData.publicUrl
+  } catch (error: any) {
+    console.error('⚠️ Supabase Storage connection error:', error.message)
+    console.log('📁 Falling back to local filesystem storage...')
+    return await uploadPhotoLocal(userId, photoFile, index)
   }
+}
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from(STORAGE_BUCKETS.PHOTOS)
-    .getPublicUrl(fileName)
-
-  return urlData.publicUrl
+/**
+ * Fallback: Upload photo to local filesystem
+ */
+async function uploadPhotoLocal(userId: string, photoFile: Blob, index: number): Promise<string> {
+  const { writeFile, mkdir } = await import('fs/promises')
+  const { join } = await import('path')
+  
+  const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+  const fileName = `photo-${index}-${Date.now()}.jpg`
+  const filePath = join(uploadDir, fileName)
+  
+  // Create directory if it doesn't exist
+  await mkdir(uploadDir, { recursive: true })
+  
+  // Convert Blob to Buffer
+  const arrayBuffer = await photoFile.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  
+  // Write file
+  await writeFile(filePath, buffer)
+  
+  // Return relative URL
+  return `/uploads/${userId}/${fileName}`
 }
 
 /**
