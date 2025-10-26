@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import Recorder from '@/components/Recorder'
 import Uploader from '@/components/Uploader'
 import CloneTabs from '@/components/CloneTabs'
+import Dashboard from '@/components/Dashboard'
+import CloneBrowser from '@/components/CloneBrowser'
 import LandingPage from '@/components/LandingPage'
 import ConsentDialog from '@/components/ConsentDialog'
 import { EnvErrorMessage } from '@/components/EnvErrorMessage'
@@ -46,9 +48,11 @@ export default function Home() {
 function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   const [showConsent, setShowConsent] = useState(false)
   const [consentGiven, setConsentGiven] = useState(false)
+  const [view, setView] = useState<'dashboard' | 'character' | 'browse'>('dashboard')
   const [step, setStep] = useState<'record' | 'upload' | 'chat'>('record')
   const [userId, setUserId] = useState<string | null>(null)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
+  const [browsingUserId, setBrowsingUserId] = useState<string | null>(null)
   const [voiceTraining, setVoiceTraining] = useState({
     isTraining: false,
     progress: 0,
@@ -197,8 +201,20 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
           <div className="absolute top-6 right-6 flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm text-gray-400">Logged in as</p>
-              <p className="text-white font-medium">{user.name || user.email}</p>
+              <p className="text-white font-medium">@{user.username || user.name || user.email}</p>
             </div>
+            {view !== 'dashboard' && (
+              <button
+                onClick={() => {
+                  setView('dashboard')
+                  setBrowsingUserId(null)
+                }}
+                className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                         hover:bg-white/20 transition-colors"
+              >
+                ← Dashboard
+              </button>
+            )}
             <button
               onClick={logout}
               className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
@@ -208,69 +224,96 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
             </button>
           </div>
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-12"
-      >
-        <h1 className="text-6xl font-bold mb-4 glow-text">
-          GhostJournal
-        </h1>
-                <p className="text-white text-xl">
-                  Your AI Clone
-                </p>
-      </motion.div>
+      {/* Main Content Based on View */}
+      {view === 'dashboard' && (
+        <Dashboard
+          user={user}
+          onCreateCharacter={() => setView('character')}
+          onBrowseClones={() => setView('browse')}
+        />
+      )}
 
-      {/* Step Indicator */}
-      <div className="flex gap-4 mb-8">
-        {['record', 'upload', 'chat'].map((s, idx) => (
-          <div
-            key={s}
-            className={`w-3 h-3 rounded-full transition-all ${
-              step === s
-                ? 'bg-white w-8 border border-white'
-                : 'bg-dark-border'
-            }`}
-          />
-        ))}
-      </div>
+      {view === 'browse' && (
+        <CloneBrowser
+          currentUserId={user.id}
+          onSelectClone={(selectedUserId) => {
+            setBrowsingUserId(selectedUserId)
+            setUserId(selectedUserId)
+            setStep('chat')
+            setView('character')
+          }}
+        />
+      )}
 
-      {/* Main Content */}
-      <motion.div
-        key={step}
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        transition={{ duration: 0.3 }}
-        className="w-full max-w-4xl"
-      >
-        {step === 'record' && (
-          <Recorder onComplete={handleRecordingComplete} />
-        )}
-        {step === 'upload' && audioBlob && (
-          <>
-            {console.log('🔍 Render check - step:', step, 'audioBlob:', !!audioBlob, 'userId:', userId || 'NOT SET YET')}
-            {userId ? (
-              <Uploader
-                audioBlob={audioBlob}
-                userId={userId}
-                voiceTraining={voiceTraining}
-                onComplete={handleUploadComplete}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center p-12 bg-dark-surface rounded-lg glow-border">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mb-4"></div>
-                <p className="text-white text-xl">Creating your profile...</p>
-                <p className="text-gray-400 text-sm mt-2">Voice model is being set up</p>
-              </div>
+      {view === 'character' && (
+        <>
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h1 className="text-6xl font-bold mb-4 glow-text">
+              {browsingUserId && browsingUserId !== user.id ? 'Chat with Clone' : 'GhostJournal'}
+            </h1>
+            <p className="text-white text-xl">
+              {browsingUserId && browsingUserId !== user.id ? 'Talking to another AI clone' : 'Your AI Clone'}
+            </p>
+          </motion.div>
+
+          {/* Step Indicator (only for own character) */}
+          {(!browsingUserId || browsingUserId === user.id) && step !== 'chat' && (
+            <div className="flex gap-4 mb-8 justify-center">
+              {['record', 'upload', 'chat'].map((s, idx) => (
+                <div
+                  key={s}
+                  className={`w-3 h-3 rounded-full transition-all ${
+                    step === s
+                      ? 'bg-white w-8 border border-white'
+                      : 'bg-dark-border'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Main Content */}
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="w-full max-w-4xl"
+          >
+            {step === 'record' && (!browsingUserId || browsingUserId === user.id) && (
+              <Recorder onComplete={handleRecordingComplete} />
             )}
-          </>
-        )}
-        {step === 'chat' && userId && (
-          <CloneTabs userId={userId} />
-        )}
-      </motion.div>
+            {step === 'upload' && audioBlob && (!browsingUserId || browsingUserId === user.id) && (
+              <>
+                {console.log('🔍 Render check - step:', step, 'audioBlob:', !!audioBlob, 'userId:', userId || 'NOT SET YET')}
+                {userId ? (
+                  <Uploader
+                    audioBlob={audioBlob}
+                    userId={userId}
+                    voiceTraining={voiceTraining}
+                    onComplete={handleUploadComplete}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-12 bg-dark-surface rounded-lg glow-border">
+                    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mb-4"></div>
+                    <p className="text-white text-xl">Creating your profile...</p>
+                    <p className="text-gray-400 text-sm mt-2">Voice model is being set up</p>
+                  </div>
+                )}
+              </>
+            )}
+            {step === 'chat' && userId && (
+              <CloneTabs userId={browsingUserId || userId} />
+            )}
+          </motion.div>
+        </>
+      )}
 
       {/* Background Effects */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">

@@ -15,7 +15,7 @@ export default function CloneTabs({ userId }: CloneTabsProps) {
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Tab Headers */}
-      <div className="flex gap-4 mb-8 border-b border-white/20">
+      <div className="flex gap-4 mb-8 border-b border-white/20 justify-center">
         <button
           onClick={() => setActiveTab('context')}
           className={`px-8 py-4 font-bold text-lg transition-all relative ${
