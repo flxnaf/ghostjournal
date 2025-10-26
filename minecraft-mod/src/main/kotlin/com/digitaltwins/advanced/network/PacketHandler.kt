@@ -2,6 +2,7 @@ package com.digitaltwins.advanced.network
 
 import com.digitaltwins.DigitalTwinsMod
 import com.digitaltwins.advanced.client.TwinChatScreen
+import com.digitaltwins.TwinAudioPlayer
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking
@@ -18,6 +19,11 @@ object PacketHandler {
      * Packet ID for opening twin chat GUI
      */
     val OPEN_CHAT_GUI_PACKET = Identifier(DigitalTwinsMod.MOD_ID, "open_chat_gui")
+
+    /**
+     * Packet ID for triggering client-side audio playback
+     */
+    val PLAY_AUDIO_PACKET = Identifier(DigitalTwinsMod.MOD_ID, "play_audio")
 
     /**
      * Register server-side packet senders
@@ -43,6 +49,15 @@ object PacketHandler {
                 client.setScreen(TwinChatScreen(twinName, twinId, apiEndpoint))
             }
         }
+
+        // Register handler for audio playback
+        ClientPlayNetworking.registerGlobalReceiver(PLAY_AUDIO_PACKET) { client, _, buf, _ ->
+            val audioUrl = buf.readString()
+
+            client.execute {
+                TwinAudioPlayer.playAudioFromUrl(audioUrl)
+            }
+        }
     }
 
     /**
@@ -60,5 +75,15 @@ object PacketHandler {
         buf.writeString(apiEndpoint)
 
         ServerPlayNetworking.send(player, OPEN_CHAT_GUI_PACKET, buf)
+    }
+
+    /**
+     * Send packet to client to play audio response
+     */
+    fun sendPlayAudio(player: ServerPlayerEntity, audioUrl: String) {
+        val buf = PacketByteBufs.create()
+        buf.writeString(audioUrl)
+
+        ServerPlayNetworking.send(player, PLAY_AUDIO_PACKET, buf)
     }
 }
