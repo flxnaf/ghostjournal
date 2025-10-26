@@ -39,7 +39,10 @@ object SkinCache {
             println("   Full URL: $skinUrl")
             println("   Entity name: $entityName")
             
-            val skinId = Identifier("digitaltwins", "skins/${entityName.lowercase().replace(" ", "_")}")
+            // FIXED: Use skin URL hash as unique ID, not entity name
+            // This prevents different clones from overwriting each other's textures
+            val skinHash = skinUrl.hashCode().toString().replace("-", "n")  // Replace - with n for valid identifier
+            val skinId = Identifier("digitaltwins", "skins/${skinHash}")
 
             // Download skin texture with timeout
             val request = Request.Builder()
