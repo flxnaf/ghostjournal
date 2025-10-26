@@ -288,7 +288,7 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       <div className="bg-dark-bg border border-white/20 rounded-lg p-4">
         <p className="text-sm text-gray-300">
           <strong className="text-white">💡 Tip:</strong> The more context you add, the more accurate your AI clone will be. 
-          You can export this data anytime for use in Minecraft or other applications.
+          Export includes audio training data, voice model ID, face data, and all personality context.
         </p>
       </div>
     </div>
