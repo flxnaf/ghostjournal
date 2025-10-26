@@ -185,10 +185,6 @@ export default function LandingPage() {
                   {isSignup ? 'Already have an account? Log in' : "Don't have an account? Sign up"}
                 </button>
               </div>
-
-              <p className="mt-6 text-xs text-gray-500 text-center">
-                Temporary auth • Your friend will implement Supabase
-              </p>
             </motion.div>
           </motion.div>
         )}

@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { PrismaClient } from '@prisma/client'
+import { createServerSupabaseClient } from '@/lib/supabase'
+import { uploadAudio } from '@/lib/storage'
 
 const prisma = new PrismaClient()
 
 /**
  * Create User API - Creates user with audio only
  * Called right after recording completes (before photos/context)
+ * Now syncs with Supabase auth user ID
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user from Supabase
+    const supabase = createServerSupabaseClient()
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !authUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please log in' },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
     const audio = formData.get('audio') as File
 
@@ -22,35 +33,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create user in database
-    const user = await prisma.user.create({
-      data: {
+    // Create or update user in database using Supabase auth user ID
+    const user = await prisma.user.upsert({
+      where: { id: authUser.id },
+      update: {
+        email: authUser.email,
+        name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+      },
+      create: {
+        id: authUser.id,
+        email: authUser.email,
+        name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
         photoUrls: '[]',
       }
     })
 
-    console.log('✅ User created:', user.id)
+    console.log('✅ User created/updated:', user.id)
 
-    // Create upload directory
-    const uploadDir = join(process.cwd(), 'public', 'uploads', user.id)
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
-    // Save audio file
-    const audioBuffer = Buffer.from(await audio.arrayBuffer())
-    const audioPath = join(uploadDir, 'recording.webm')
-    await writeFile(audioPath, audioBuffer)
+    // Upload audio to Supabase Storage
+    console.log('📤 Uploading audio to Supabase Storage...')
+    const audioUrl = await uploadAudio(authUser.id, audio)
+    console.log('✅ Audio uploaded:', audioUrl)
 
     // Update user with audio URL
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        audioUrl: `/uploads/${user.id}/recording.webm`,
+        audioUrl: audioUrl,
       }
     })
 
-    console.log('✅ Audio saved for user:', user.id)
+    console.log('✅ User updated with audio URL')
 
     return NextResponse.json({ 
       success: true, 

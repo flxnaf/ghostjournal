@@ -1,0 +1,145 @@
+'use client'
+
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react'
+import { createClient } from '../supabase'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
+
+/**
+ * Supabase Auth Hook
+ * 
+ * Replaces the temporary localStorage auth with Supabase authentication.
+ * 
+ * Data structure stored in Supabase:
+ * - User profile (email, name, id)
+ * - Voice clone data (voiceModelId)
+ * - Face data (faceContours)
+ * - Personality context (stories, habits, reactions)
+ * - Chat history (summarized for context)
+ * - Memories (vector embeddings)
+ */
+
+interface User {
+  id: string
+  email: string
+  name?: string
+  createdAt: string
+}
+
+interface AuthContextType {
+  user: User | null
+  isLoading: boolean
+  login: (email: string, password: string) => Promise<void>
+  signup: (email: string, password: string, name?: string) => Promise<void>
+  logout: () => Promise<void>
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
+
+  // Helper function to convert Supabase user to our User interface
+  const convertSupabaseUser = (supabaseUser: SupabaseUser): User => ({
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    name: supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name,
+    createdAt: supabaseUser.created_at
+  })
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting session:', error)
+        } else if (session?.user) {
+          setUser(convertSupabaseUser(session.user))
+        }
+      } catch (error) {
+        console.error('Error in getInitialSession:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    getInitialSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(convertSupabaseUser(session.user))
+        } else {
+          setUser(null)
+        }
+        setIsLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
+
+  const signup = async (email: string, password: string, name?: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name: name
+        }
+      }
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (data.user) {
+      setUser(convertSupabaseUser(data.user))
+    }
+  }
+
+  const login = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (data.user) {
+      setUser(convertSupabaseUser(data.user))
+    }
+  }
+
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut()
+    
+    if (error) {
+      console.error('Error signing out:', error)
+    }
+    
+    setUser(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
