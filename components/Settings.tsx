@@ -1,18 +1,21 @@
 import { useState } from 'react'
-import { Settings as SettingsIcon, X, Check, AlertCircle } from 'lucide-react'
+import { Settings as SettingsIcon, X, Check, AlertCircle, Trash2 } from 'lucide-react'
 import axios from 'axios'
 
 interface SettingsProps {
   user: any
   onClose: () => void
   onUserUpdate: (updatedUser: any) => void
+  onLogout: () => void
 }
 
-export default function Settings({ user, onClose, onUserUpdate }: SettingsProps) {
+export default function Settings({ user, onClose, onUserUpdate, onLogout }: SettingsProps) {
   const [newUsername, setNewUsername] = useState(user.username || '')
   const [isChanging, setIsChanging] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleChangeUsername = async () => {
     if (!newUsername || newUsername === user.username) {
@@ -53,6 +56,19 @@ export default function Settings({ user, onClose, onUserUpdate }: SettingsProps)
       setSuccess(false)
     } finally {
       setIsChanging(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true)
+    try {
+      await axios.delete('/api/delete-account')
+      alert('Account deleted successfully')
+      onLogout()
+    } catch (error) {
+      console.error('Delete account error:', error)
+      alert('Failed to delete account. Please try again.')
+      setIsDeleting(false)
     }
   }
 
@@ -115,7 +131,7 @@ export default function Settings({ user, onClose, onUserUpdate }: SettingsProps)
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 mb-6">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
@@ -143,6 +159,63 @@ export default function Settings({ user, onClose, onUserUpdate }: SettingsProps)
             )}
           </button>
         </div>
+
+        {/* Danger Zone */}
+        <div className="border-t border-gray-200 pt-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-500" />
+            Danger Zone
+          </h3>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={isChanging || success}
+            className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete Account
+          </button>
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 m-4">
+              <h3 className="text-xl font-bold text-red-600 mb-3 flex items-center gap-2">
+                <AlertCircle className="w-6 h-6" />
+                Delete Account?
+              </h3>
+              <p className="text-gray-600 mb-6 text-sm">
+                This will permanently delete your account, voice model, photos, chat history, and all associated data. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Delete Forever
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

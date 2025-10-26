@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { Settings as SettingsIcon } from 'lucide-react'
 import Recorder from '@/components/Recorder'
 import Uploader from '@/components/Uploader'
 import CloneTabs from '@/components/CloneTabs'
 import Dashboard from '@/components/Dashboard'
+import Settings from '@/components/Settings'
 import CloneBrowser from '@/components/CloneBrowser'
 import LandingPage from '@/components/LandingPage'
 import ConsentDialog from '@/components/ConsentDialog'
@@ -45,8 +47,10 @@ export default function Home() {
   return <AuthenticatedApp user={user} logout={logout} />
 }
 
-function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
+function AuthenticatedApp({ user: initialUser, logout }: { user: any, logout: () => void }) {
+  const [user, setUser] = useState(initialUser)
   const [showConsent, setShowConsent] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [consentGiven, setConsentGiven] = useState(false)
   const [view, setView] = useState<'dashboard' | 'character' | 'browse'>('dashboard')
   const [step, setStep] = useState<'record' | 'upload' | 'chat'>('record')
@@ -303,12 +307,19 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       {/* Main app - only show after consent */}
       {consentGiven && (
         <>
-          {/* User Info & Logout */}
+          {/* User Info & Settings & Logout */}
           <div className="absolute top-6 right-6 flex items-center gap-4">
             <div className="text-right">
               <p className="text-sm text-gray-400">Logged in as</p>
               <p className="text-white font-medium">@{user.username || user.name || user.email}</p>
             </div>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-all group"
+              title="Settings"
+            >
+              <SettingsIcon className="w-5 h-5 text-gray-400 group-hover:text-white transition" />
+            </button>
             {browsingUserId && (
               <button
                 onClick={() => {
@@ -421,8 +432,8 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
             handleReRecord()
           }}
           onUserUpdate={(updatedUser) => {
-            // Update the user object in state
-            Object.assign(user, updatedUser)
+            // Update the user state to trigger re-render
+            setUser(updatedUser)
             console.log('✅ User updated:', updatedUser)
           }}
         />
@@ -532,6 +543,19 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
       </div>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <Settings
+          user={user}
+          onClose={() => setShowSettings(false)}
+          onUserUpdate={(updatedUser) => {
+            setUser(updatedUser)
+            console.log('✅ User updated from settings:', updatedUser)
+          }}
+          onLogout={logout}
+        />
+      )}
         </>
       )}
     </main>
