@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import axios from 'axios'
+import { User, Users, Trash2, Globe, Lock } from 'lucide-react'
 
 interface DashboardProps {
   user: any
@@ -73,7 +74,9 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
             className="bg-dark-surface rounded-2xl p-8 glow-border cursor-pointer
                      hover:border-white/50 transition-all"
           >
-            <div className="text-6xl mb-4">🎭</div>
+            <div className="mb-4">
+              <User className="w-16 h-16 text-white" />
+            </div>
             <h2 className="text-3xl font-bold text-white mb-3">
               My Clone Model
             </h2>
@@ -96,7 +99,9 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
             className="bg-dark-surface rounded-2xl p-8 glow-border cursor-pointer
                      hover:border-white/50 transition-all"
           >
-            <div className="text-6xl mb-4">🔍</div>
+            <div className="mb-4">
+              <Users className="w-16 h-16 text-white" />
+            </div>
             <h2 className="text-3xl font-bold text-white mb-3">
               Browse Clone Models
             </h2>
@@ -119,25 +124,35 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
         >
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-white mb-1">
-                {isPublic ? '🌐 Public Clone' : '🔒 Private Clone'}
+              <h3 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+                {isPublic ? (
+                  <>
+                    <Globe className="w-5 h-5" />
+                    Public Clone
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-5 h-5" />
+                    Private Clone
+                  </>
+                )}
               </h3>
               <p className="text-sm text-gray-400">
                 {isPublic 
-                  ? 'Your clone is searchable. Others can find and download it for Minecraft.'
+                  ? 'Your clone is searchable. Others can find and chat with it.'
                   : 'Your clone is private. Only you can access it.'}
               </p>
             </div>
             <button
               onClick={handleTogglePublic}
               disabled={isTogglingPublic}
-              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
                 isPublic
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30'
-                  : 'bg-white/10 text-gray-400 border border-white/20 hover:bg-white/20'
-              } disabled:opacity-50`}
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {isTogglingPublic ? '...' : (isPublic ? 'Make Private' : 'Make Public')}
+              {isTogglingPublic ? 'Updating...' : (isPublic ? 'Make Private' : 'Make Public')}
             </button>
           </div>
         </motion.div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
+import { Search, MessageCircle, Download, User } from 'lucide-react'
 
 interface Clone {
   userId: string
@@ -165,7 +166,7 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
                      placeholder-gray-500"
           />
           <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
-            🔍
+            <Search className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -190,42 +191,43 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
                        hover:border-white/40 cursor-pointer transition-all glow-border"
             >
               {/* Avatar */}
-              <div className="w-20 h-20 bg-gradient-to-br from-white/20 to-white/5 
-                            rounded-full flex items-center justify-center mb-4 mx-auto">
-                <span className="text-3xl">👤</span>
+              <div className="w-24 h-24 bg-gradient-to-br from-white/20 to-white/5 
+                            rounded-full flex items-center justify-center mb-6 mx-auto">
+                <User className="w-12 h-12 text-white/70" />
               </div>
 
               {/* Info */}
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-white mb-1">
+              <div className="text-center mb-4">
+                <h3 className="text-2xl font-bold text-white mb-2">
                   {clone.name || clone.username}
                 </h3>
-                <p className="text-sm text-gray-400 mb-3">
-                  @{clone.username}
-                </p>
+                {clone.username && clone.username !== 'unknown' && (
+                  <p className="text-sm text-gray-400 mb-3">
+                    @{clone.username}
+                  </p>
+                )}
                 {clone.bio && (
-                  <p className="text-sm text-gray-300 mb-4 line-clamp-2">
+                  <p className="text-sm text-gray-300 mt-4 line-clamp-3 px-2">
                     {clone.bio}
                   </p>
                 )}
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <span>Created {new Date(clone.createdAt).toLocaleDateString()}</span>
-                </div>
               </div>
 
               {/* Actions */}
               <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
                 <button className="w-full py-2 bg-white/10 hover:bg-white/20 
-                                 text-white font-medium rounded-lg transition-colors">
-                  💬 Chat with Clone
+                                 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
+                  Chat with Clone
                 </button>
                 <button
                   onClick={(e) => downloadClone(clone, e)}
                   className="w-full py-2 bg-white/5 hover:bg-white/10 
                            text-white/80 font-medium rounded-lg transition-colors
-                           border border-white/20 hover:border-white/40"
+                           border border-white/20 hover:border-white/40 flex items-center justify-center gap-2"
                 >
-                  📥 Download for Minecraft
+                  <Download className="w-4 h-4" />
+                  Download Clone
                 </button>
               </div>
             </motion.div>

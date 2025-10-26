@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Mic, MessageCircle, BookOpen, Camera } from 'lucide-react'
 
 interface ConsentDialogProps {
   isOpen: boolean
@@ -61,8 +62,9 @@ export default function ConsentDialog({ isOpen, onAccept, onDecline }: ConsentDi
                   className="mt-1 w-5 h-5 rounded border-white/30 bg-transparent checked:bg-white checked:border-white focus:ring-2 focus:ring-white/50"
                 />
                 <div>
-                  <div className="text-white font-medium group-hover:text-white/80">
-                    🎤 Audio recordings
+                  <div className="text-white font-medium group-hover:text-white/80 flex items-center gap-2">
+                    <Mic className="w-4 h-4" />
+                    Audio recordings
                   </div>
                   <div className="text-sm text-gray-400">
                     Save your voice for cloning
@@ -78,8 +80,9 @@ export default function ConsentDialog({ isOpen, onAccept, onDecline }: ConsentDi
                   className="mt-1 w-5 h-5 rounded border-white/30 bg-transparent checked:bg-white checked:border-white focus:ring-2 focus:ring-white/50"
                 />
                 <div>
-                  <div className="text-white font-medium group-hover:text-white/80">
-                    💬 Chat history
+                  <div className="text-white font-medium group-hover:text-white/80 flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4" />
+                    Chat history
                   </div>
                   <div className="text-sm text-gray-400">
                     Save conversations for context
@@ -95,8 +98,9 @@ export default function ConsentDialog({ isOpen, onAccept, onDecline }: ConsentDi
                   className="mt-1 w-5 h-5 rounded border-white/30 bg-transparent checked:bg-white checked:border-white focus:ring-2 focus:ring-white/50"
                 />
                 <div>
-                  <div className="text-white font-medium group-hover:text-white/80">
-                    📝 Personal stories & context
+                  <div className="text-white font-medium group-hover:text-white/80 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    Personal stories & context
                   </div>
                   <div className="text-sm text-gray-400">
                     Save your stories, habits, and reactions
@@ -112,8 +116,9 @@ export default function ConsentDialog({ isOpen, onAccept, onDecline }: ConsentDi
                   className="mt-1 w-5 h-5 rounded border-white/30 bg-transparent checked:bg-white checked:border-white focus:ring-2 focus:ring-white/50"
                 />
                 <div>
-                  <div className="text-white font-medium group-hover:text-white/80">
-                    📸 Photos & 3D face model
+                  <div className="text-white font-medium group-hover:text-white/80 flex items-center gap-2">
+                    <Camera className="w-4 h-4" />
+                    Photos & 3D face model
                   </div>
                   <div className="text-sm text-gray-400">
                     Save your photos and generated face

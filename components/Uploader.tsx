@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
+import { Mic, CheckCircle, AlertCircle, Upload } from 'lucide-react'
 import { useFaceMesh } from '@/lib/hooks/useFaceMesh'
 import { applyMediapipeToMockFace } from '@/lib/applyMediapipeToMock'
 
@@ -501,7 +502,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
         className="fixed bottom-8 right-8 z-50 bg-dark-card border border-white/30 rounded-xl p-6 shadow-2xl w-96"
       >
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <span>🎤</span>
+          <Mic className="w-5 h-5" />
           <span>Voice Training</span>
         </h3>
         
@@ -524,8 +525,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
           
           {voiceTraining.error ? (
             <div className="mt-2 space-y-2">
-              <p className="text-xs text-red-400 text-center">
-                ❌ Error: {voiceTraining.error}
+              <p className="text-xs text-red-400 text-center flex items-center justify-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Error: {voiceTraining.error}
               </p>
               <p className="text-xs text-gray-400 text-center">
                 You can continue without voice training or re-record
@@ -534,17 +536,23 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
                 <button
                   onClick={onReRecord}
                   className="w-full py-2 px-4 bg-transparent border border-white/30 text-white text-sm rounded-lg
-                           hover:bg-white/10 transition-colors"
+                           hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
                 >
-                  🎤 Re-record Voice
+                  <Mic className="w-4 h-4" />
+                  Re-record Voice
                 </button>
               )}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-gray-400 text-center">
-              {voiceTraining.progress === 100
-                ? "✅ Voice model ready! Continue with photos below."
-                : "Training your custom S1 voice model..."}
+            <p className="mt-2 text-xs text-gray-400 text-center flex items-center justify-center gap-1">
+              {voiceTraining.progress === 100 ? (
+                <>
+                  <CheckCircle className="w-3 h-3 text-green-400" />
+                  Voice model ready! Continue with photos below.
+                </>
+              ) : (
+                "Training your custom S1 voice model..."
+              )}
             </p>
           )}
         </div>
@@ -574,7 +582,19 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
                    hover:bg-white hover:text-black transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {processingFace ? '🎭 Analyzing Your Face...' : (uploading ? '📤 Uploading...' : 'I Consent - Create My Clone')}
+          {processingFace ? (
+            <span className="flex items-center gap-2">
+              <Upload className="w-5 h-5 animate-pulse" />
+              Analyzing Your Face...
+            </span>
+          ) : uploading ? (
+            <span className="flex items-center gap-2">
+              <Upload className="w-5 h-5 animate-pulse" />
+              Uploading...
+            </span>
+          ) : (
+            'I Consent - Create My Clone'
+          )}
         </motion.button>
       </div>
 
