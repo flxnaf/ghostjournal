@@ -42,9 +42,14 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : PathAwa
     var apiEndpoint: String = ""
         private set
 
+    /**
+     * Minecraft skin URL for this twin
+     */
+    var minecraftSkinUrl: String? = null
+        private set
+
     init {
-        // Make entity persistent
-        isPersistent = true
+        // Make entity persistent (entities are persistent by default)
     }
 
     override fun initGoals() {
@@ -74,6 +79,7 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : PathAwa
         this.twinDisplayName = twinData.display_name
         this.twinId = twinData.twin_id
         this.apiEndpoint = twinData.api_endpoint
+        this.minecraftSkinUrl = twinData.minecraft_skin_url
 
         // Set custom name
         this.customName = Text.literal(twinData.display_name)
@@ -108,6 +114,7 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : PathAwa
         nbt.putString("TwinDisplayName", twinDisplayName)
         nbt.putString("TwinId", twinId)
         nbt.putString("ApiEndpoint", apiEndpoint)
+        minecraftSkinUrl?.let { nbt.putString("MinecraftSkinUrl", it) }
     }
 
     /**
@@ -119,6 +126,7 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : PathAwa
         twinDisplayName = nbt.getString("TwinDisplayName")
         twinId = nbt.getString("TwinId")
         apiEndpoint = nbt.getString("ApiEndpoint")
+        minecraftSkinUrl = if (nbt.contains("MinecraftSkinUrl")) nbt.getString("MinecraftSkinUrl") else null
 
         if (twinDisplayName.isNotEmpty()) {
             customName = Text.literal(twinDisplayName)
@@ -133,8 +141,4 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : PathAwa
         return false
     }
 
-    /**
-     * Get twin name for external use
-     */
-    fun getTwinName(): String = twinName
 }

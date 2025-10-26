@@ -25,8 +25,12 @@ object TwinAPI {
      */
     data class TwinData(
         val twin_id: String,
+        val username: String?,
         val name: String,
         val display_name: String,
+        val voice_model_id: String?,
+        val minecraft_username: String?,
+        val minecraft_skin_url: String?,
         val api_endpoint: String,
         val created_at: String
     )

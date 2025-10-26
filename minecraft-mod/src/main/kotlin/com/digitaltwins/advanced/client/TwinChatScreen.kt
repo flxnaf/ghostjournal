@@ -66,7 +66,7 @@ class TwinChatScreen(
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         // Dark background
-        renderBackground(context, mouseX, mouseY, delta)
+        renderBackground(context)
 
         // Title
         val twinData = TwinStorage.getTwinByName(twinName)

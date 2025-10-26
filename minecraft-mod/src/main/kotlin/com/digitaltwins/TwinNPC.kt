@@ -34,7 +34,6 @@ object TwinNPC {
         armorStand.customName = Text.literal(twinData.display_name)
         armorStand.isCustomNameVisible = true
         armorStand.isInvulnerable = true
-        armorStand.isMarker = false
         armorStand.setNoGravity(true)
 
         // Spawn in world
