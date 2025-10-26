@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
-import { Mic, CheckCircle, AlertCircle, Upload } from 'lucide-react'
+import { Mic, CheckCircle, AlertCircle, Upload, BookOpen, RotateCcw, Smile } from 'lucide-react'
 import { useFaceMesh } from '@/lib/hooks/useFaceMesh'
 import { applyMediapipeToMockFace } from '@/lib/applyMediapipeToMock'
 
@@ -452,8 +452,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              📖 Tell us a story about yourself
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Tell us a story about yourself
             </label>
             <textarea
               value={contexts.story}
@@ -466,8 +467,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              🔄 Describe a daily habit
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Describe a daily habit
             </label>
             <textarea
               value={contexts.habit}
@@ -480,8 +482,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              😊 How do you typically react to challenges?
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <Smile className="w-4 h-4" />
+              How do you typically react to challenges?
             </label>
             <textarea
               value={contexts.reaction}

@@ -121,7 +121,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
       
       // Show success message
       const successMsg = document.createElement('div')
-      successMsg.textContent = '✅ Audio Enabled!'
+      successMsg.textContent = 'Audio Enabled!'
       successMsg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:15px 30px;background:#00ff88;color:#000;border-radius:10px;font-weight:bold;z-index:9999;'
       document.body.appendChild(successMsg)
       setTimeout(() => document.body.removeChild(successMsg), 2000)
@@ -331,7 +331,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
               
               // For hackathon demo: show a visual indicator instead of alert
               const playBtn = document.createElement('button')
-              playBtn.textContent = '🔊 Click to Play Audio'
+              playBtn.textContent = 'Click to Play Audio'
               playBtn.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);padding:20px 40px;font-size:20px;background:#ffffff;color:#000;border:none;border-radius:10px;cursor:pointer;z-index:9999;animation:pulse 1s infinite;'
               document.body.appendChild(playBtn)
               
@@ -381,7 +381,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
       console.log('✅ Personality regenerated!')
       
       // Show success message
-      alert('✅ Feedback saved! I\'ll respond more accurately next time.')
+      alert('Feedback saved! I\'ll respond more accurately next time.')
       
       // Reset critique state
       setCritiquingIdx(null)
