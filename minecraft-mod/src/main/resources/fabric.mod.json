@@ -12,7 +12,6 @@
     "sources": "https://github.com/yourusername/digital-twins"
   },
   "license": "MIT",
-  "icon": "assets/digitaltwins/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
