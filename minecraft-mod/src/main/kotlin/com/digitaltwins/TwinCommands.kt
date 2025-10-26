@@ -1,5 +1,7 @@
 package com.digitaltwins
 
+import com.digitaltwins.advanced.entity.ModEntities
+import com.digitaltwins.advanced.entity.TwinEntity
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
@@ -10,11 +12,15 @@ import net.minecraft.server.command.CommandManager.argument
 import net.minecraft.server.command.CommandManager.literal
 import net.minecraft.server.command.ServerCommandSource
 import net.minecraft.text.Text
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Handles all twin-related commands
  */
 object TwinCommands {
+
+    // Track spawned TwinEntity instances by name
+    private val spawnedEntities = ConcurrentHashMap<String, TwinEntity>()
 
     fun register(dispatcher: CommandDispatcher<ServerCommandSource>) {
         // /twinimport <url-or-path>
@@ -163,20 +169,20 @@ object TwinCommands {
 
         player.sendMessage(Text.literal("§b=== Imported Twins ==="), false)
         twins.forEach { twin ->
-            val spawned = if (TwinNPC.isSpawned(twin.name)) "§a(Spawned)" else "§7(Not spawned)"
+            val spawned = if (isSpawned(twin.name)) "§a(Spawned)" else "§7(Not spawned)"
             player.sendMessage(Text.literal("§f- ${twin.display_name} $spawned"), false)
         }
     }
 
     /**
-     * Spawn a twin NPC in the world
+     * Spawn a twin NPC in the world as a TwinEntity (player model with AI)
      */
     private fun spawnTwin(context: CommandContext<ServerCommandSource>, name: String) {
         val player = context.source.player ?: return
         val world = player.serverWorld
 
         // Check if already spawned
-        if (TwinNPC.isSpawned(name)) {
+        if (isSpawned(name)) {
             player.sendMessage(
                 Text.literal("§e${name} is already spawned! Use /twinremove first."),
                 false
@@ -194,16 +200,37 @@ object TwinCommands {
             return
         }
 
-        // Spawn at player's location
+        // Create and spawn TwinEntity
+        val twinEntity = ModEntities.TWIN_ENTITY.create(world)
+        if (twinEntity == null) {
+            player.sendMessage(
+                Text.literal("§cFailed to create twin entity"),
+                false
+            )
+            return
+        }
+
+        // Set twin data and position
+        twinEntity.setTwinData(name)
         val pos = player.blockPos
-        TwinNPC.spawn(world, pos, twinData)
+        twinEntity.refreshPositionAndAngles(
+            pos.x + 0.5,
+            pos.y.toDouble(),
+            pos.z + 0.5,
+            player.yaw,
+            0f
+        )
+
+        // Spawn entity in world
+        world.spawnEntity(twinEntity)
+        spawnedEntities[name] = twinEntity
 
         player.sendMessage(
             Text.literal("§a✓ Spawned ${twinData.display_name} at your location!"),
             false
         )
         player.sendMessage(
-            Text.literal("§7Chat with: /twin ${twinData.name} <message>"),
+            Text.literal("§7Right-click to chat, or use: /twin ${twinData.name} <message>"),
             false
         )
     }
@@ -288,7 +315,7 @@ object TwinCommands {
     private fun removeTwin(context: CommandContext<ServerCommandSource>, name: String) {
         val player = context.source.player ?: return
 
-        if (!TwinNPC.isSpawned(name)) {
+        if (!isSpawned(name)) {
             player.sendMessage(
                 Text.literal("§e$name is not currently spawned."),
                 false
@@ -296,10 +323,22 @@ object TwinCommands {
             return
         }
 
-        TwinNPC.despawn(name)
+        // Remove and discard entity
+        spawnedEntities[name]?.let { entity ->
+            entity.discard()
+            spawnedEntities.remove(name)
+        }
+
         player.sendMessage(
             Text.literal("§a✓ Despawned $name"),
             false
         )
+    }
+
+    /**
+     * Check if a twin is currently spawned
+     */
+    private fun isSpawned(name: String): Boolean {
+        return spawnedEntities[name]?.isAlive == true
     }
 }
