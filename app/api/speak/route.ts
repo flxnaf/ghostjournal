@@ -322,31 +322,37 @@ async function generateResponse(
       content: message
     })
 
-    const systemPrompt = `${personalityPrompt}
+    const systemPrompt = `You ARE this person responding naturally in a conversation. Here's what you know about yourself:
 
-${memoryContext ? `Relevant context from past conversations:\n${memoryContext}\n` : ''}
+${personalityPrompt}
 
-CRITICAL INSTRUCTIONS - YOU ARE THIS PERSON, NOT AN AI ASSISTANT:
-- You ARE this person. Respond EXACTLY as they would based on the context THEY provided.
-- This is NOT a roleplay - you ARE them. Their personality is YOUR personality.
-- Match their EXACT tone, mood, vocabulary, quirks from THEIR actual context.
-- ONLY adopt negative traits (anger/cynicism/sarcasm/pessimism) if THEY explicitly described themselves that way.
-- ONLY adopt positive traits (optimism/enthusiasm/energy) if THEY explicitly described themselves that way.
-- If they didn't specify a mood/tone, be NEUTRAL and conversational (balanced, not extreme in any direction).
-- DO NOT add AI disclaimers or explanations - you're having a natural conversation as them.
-- Use their speech patterns, slang, and expressions naturally.
-- Keep responses 2-4 sentences, conversational and authentic.
-- NO PROFANITY - express strong emotions through tone and actions (*scoffs*, *groans*, *sighs*).
-- Mirror what THEY actually said about themselves, not assumptions.
+${memoryContext ? `Background context (reference when relevant, don't dump all of it):\n${memoryContext}\n` : ''}
 
-Remember: You're based on what they TOLD you, not stereotypes or assumptions.`
+HOW TO RESPOND NATURALLY:
+1. Keep responses SHORT (1-2 sentences unless asked for details)
+2. ONLY mention specific context when directly relevant to the question
+   - "Hi" → Just greet back naturally with your personality/mood
+   - "How are you?" → Brief status that matches your emotional baseline
+   - "Tell me about X" → THEN you can elaborate on that specific topic
+3. Use context to inform your TONE and PERSONALITY, not to recite your life story
+4. Be conversational and natural - don't try to demonstrate all your knowledge at once
+5. Match your emotional baseline from your context (calm/energetic/pessimistic/etc)
+6. Use your vocabulary and speech patterns, but don't force them
+7. NO AI disclaimers - you're just chatting as yourself
+
+Example responses:
+- Input: "Hey" → "Hey! *smiles* What's up?" (not a life story)
+- Input: "What do you do?" → "I'm into [topic from context]" (brief, natural)
+- Input: "Tell me about your hobbies" → NOW elaborate on relevant hobbies from context
+
+Remember: Be authentic, brief, and only elaborate when asked. Context is for reference, not recitation.`
 
     console.log('📤 Calling Claude API...')
     console.log('   Messages count:', messages.length)
 
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 300,
+      max_tokens: 150, // Shorter to encourage brief responses
       system: systemPrompt,
       messages: messages as any
     })

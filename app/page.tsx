@@ -337,33 +337,43 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
           onCreateCharacter={async () => {
             console.log('🎯 Edit Character clicked!')
             console.log('   Current user.id:', user.id)
-            console.log('   Current step:', step)
-            console.log('   Current userId state:', userId)
             
-            // Check if user already has audio - if so, skip to CloneTabs
+            // Check user's completion status
             try {
-              console.log('🔍 Checking if user has audio via /api/personality...')
+              console.log('🔍 Checking user completion status via /api/personality...')
               const userDataResponse = await axios.get(`/api/personality?userId=${user.id}`)
               const userData = userDataResponse.data
               
-              console.log('📦 /api/personality response:')
-              console.log('   Full data:', userData)
-              console.log('   audioUrl:', userData.audioUrl)
-              console.log('   voiceModelId:', userData.voiceModelId)
-              console.log('   Has audio?:', !!userData.audioUrl)
+              console.log('📦 User setup status:')
+              console.log('   Has audioUrl?:', !!userData.audioUrl)
+              console.log('   Has faceData?:', !!userData.faceData)
+              console.log('   Has voiceModelId?:', !!userData.voiceModelId)
               
-              if (userData.audioUrl) {
-                console.log('✅ User has audio - going to CloneTabs')
+              const hasCompletedSetup = userData.audioUrl && userData.faceData
+              
+              if (hasCompletedSetup) {
+                console.log('✅ Setup complete - going directly to CloneTabs')
                 setUserId(user.id)
                 setStep('chat')
+              } else if (userData.audioUrl && !userData.faceData) {
+                console.log('⚠️ Voice recorded but photo/context not done - going to upload step')
+                // Set audioBlob to a dummy value so upload step can render
+                setAudioBlob(new Blob())
+                setUserId(user.id)
+                setVoiceTraining({
+                  isTraining: false,
+                  progress: 100,
+                  status: 'Completed',
+                  error: null
+                })
+                setStep('upload')
               } else {
-                console.log('⚠️ User has NO audio - starting at record step')
+                console.log('⚠️ No voice recording - starting at record step')
                 setStep('record')
               }
             } catch (err: any) {
-              console.error('❌ Error checking audio:', err)
-              console.error('   Error message:', err.message)
-              console.error('   Error response:', err.response?.data)
+              console.error('❌ Error checking setup status:', err)
+              console.error('   Error details:', err.response?.data)
               console.log('⚠️ Defaulting to record step due to error')
               setStep('record')
             }
