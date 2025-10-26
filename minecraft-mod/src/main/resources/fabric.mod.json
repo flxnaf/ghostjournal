@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "digitaltwins",
+  "version": "${version}",
+  "name": "Digital Twins",
+  "description": "Interact with AI digital twins from your web app in Minecraft",
+  "authors": [
+    "Your Team"
+  ],
+  "contact": {
+    "homepage": "https://yourapp.com",
+    "sources": "https://github.com/yourusername/digital-twins"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "kotlin",
+        "value": "com.digitaltwins.DigitalTwinsMod"
+      }
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": "1.20.1",
+    "java": ">=17",
+    "fabric-language-kotlin": ">=1.10.0"
+  }
+}
