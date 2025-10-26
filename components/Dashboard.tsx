@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import axios from 'axios'
-import { User, Users, Trash2, Globe, Lock } from 'lucide-react'
+import { User, Users, Trash2, Globe, Lock, Settings as SettingsIcon } from 'lucide-react'
+import Settings from './Settings'
 
 interface DashboardProps {
   user: any
@@ -11,10 +12,12 @@ interface DashboardProps {
   onBrowseClones: () => void
   onLogout: () => void
   onReRecordVoice?: () => void
+  onUserUpdate?: (updatedUser: any) => void
 }
 
-export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout, onReRecordVoice }: DashboardProps) {
+export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout, onReRecordVoice, onUserUpdate }: DashboardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPublic, setIsPublic] = useState(user.isPublic || false)
   const [isTogglingPublic, setIsTogglingPublic] = useState(false)
@@ -76,9 +79,18 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-12"
         >
-          <h1 className="text-5xl font-bold mb-4 glow-text">
-            Welcome back, {user.name || user.username}!
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-5xl font-bold glow-text">
+              Welcome back, {user.name || user.username}!
+            </h1>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all group"
+              title="Settings"
+            >
+              <SettingsIcon className="w-6 h-6 text-gray-400 group-hover:text-white transition" />
+            </button>
+          </div>
           <p className="text-xl text-gray-400">
             What would you like to do?
           </p>
@@ -256,6 +268,15 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
               </div>
             </motion.div>
           </div>
+        )}
+
+        {/* Settings Modal */}
+        {showSettings && onUserUpdate && (
+          <Settings
+            user={user}
+            onClose={() => setShowSettings(false)}
+            onUserUpdate={onUserUpdate}
+          />
         )}
       </div>
     </div>

@@ -420,6 +420,11 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
             setView('character')
             handleReRecord()
           }}
+          onUserUpdate={(updatedUser) => {
+            // Update the user object in state
+            Object.assign(user, updatedUser)
+            console.log('✅ User updated:', updatedUser)
+          }}
         />
       )}
 
