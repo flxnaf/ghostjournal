@@ -57,6 +57,14 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
 
   // Check if user has already given consent
   useEffect(() => {
+    // Skip consent for admin bypass users
+    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
+    if (isAdminBypass) {
+      console.log('🔑 Admin bypass - skipping consent')
+      setConsentGiven(true)
+      return
+    }
+    
     const checkConsent = async () => {
       try {
         const response = await axios.get(`/api/user-consent?userId=${user.id}`)
