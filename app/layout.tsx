@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { Providers } from '@/components/Providers'
 
 export const metadata: Metadata = {
-  title: 'EchoSelf - Your AI Clone',
-  description: 'Create your interactive voice and visual AI clone',
+  title: 'GhostJournal - Your AI Clone',
+  description: 'Create your interactive AI clone',
 }
 
 export default function RootLayout({
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-dark-bg text-white min-h-screen">
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

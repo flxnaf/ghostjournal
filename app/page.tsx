@@ -5,9 +5,31 @@ import { motion } from 'framer-motion'
 import Recorder from '@/components/Recorder'
 import Uploader from '@/components/Uploader'
 import CloneChat from '@/components/CloneChat'
+import LandingPage from '@/components/LandingPage'
+import { useAuth } from '@/lib/hooks/useAuth'
 import axios from 'axios'
 
 export default function Home() {
+  const { user, isLoading, logout } = useAuth()
+  
+  // Show landing page if not logged in
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
+      </div>
+    )
+  }
+  
+  if (!user) {
+    return <LandingPage />
+  }
+  
+  // Main app for logged-in users
+  return <AuthenticatedApp user={user} logout={logout} />
+}
+
+function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   const [step, setStep] = useState<'record' | 'upload' | 'chat'>('record')
   const [userId, setUserId] = useState<string | null>(null)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -74,6 +96,21 @@ export default function Home() {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
+      {/* User Info & Logout */}
+      <div className="absolute top-6 right-6 flex items-center gap-4">
+        <div className="text-right">
+          <p className="text-sm text-gray-400">Logged in as</p>
+          <p className="text-white font-medium">{user.name || user.email}</p>
+        </div>
+        <button
+          onClick={logout}
+          className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                   hover:bg-white hover:text-black transition-colors"
+        >
+          Logout
+        </button>
+      </div>
+
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -81,10 +118,10 @@ export default function Home() {
         className="text-center mb-12"
       >
         <h1 className="text-6xl font-bold mb-4 glow-text">
-          EchoSelf
+          GhostJournal
         </h1>
                 <p className="text-white text-xl">
-                  Create Your Interactive AI Clone
+                  Your AI Clone
                 </p>
       </motion.div>
 
