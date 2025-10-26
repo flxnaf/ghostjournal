@@ -44,6 +44,8 @@ You need to create two storage buckets in Supabase:
 
 **Important:** Both buckets must be **public** so URLs work properly.
 
+**Optional but Recommended:** Set up storage security policies by running the SQL script in `supabase/storage-policies.sql`. See `supabase/README.md` for detailed instructions.
+
 ### 3. Run Database Migration
 
 Since we changed from SQLite to PostgreSQL, you need to run a migration:
