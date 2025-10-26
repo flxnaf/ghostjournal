@@ -7,10 +7,23 @@ import Uploader from '@/components/Uploader'
 import CloneChat from '@/components/CloneChat'
 import LandingPage from '@/components/LandingPage'
 import ConsentDialog from '@/components/ConsentDialog'
+import { EnvErrorMessage } from '@/components/EnvErrorMessage'
 import { useAuth } from '@/lib/hooks/useAuth'
 import axios from 'axios'
 
 export default function Home() {
+  // Check if Supabase is configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+  const isSupabaseMissing = !supabaseUrl || !supabaseKey || 
+    supabaseUrl === 'https://placeholder.supabase.co' || 
+    supabaseKey === 'placeholder-key'
+  
+  // Show error message if environment variables are not configured
+  if (isSupabaseMissing) {
+    return <EnvErrorMessage />
+  }
+  
   const { user, isLoading, logout } = useAuth()
   
   // Show landing page if not logged in

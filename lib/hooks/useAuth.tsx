@@ -50,6 +50,18 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
   // Check for existing session on mount
   useEffect(() => {
+    // Check if Supabase is properly configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+    
+    if (!supabaseUrl || !supabaseKey || 
+        supabaseUrl === 'https://placeholder.supabase.co' || 
+        supabaseKey === 'placeholder-key') {
+      console.error('❌ Supabase not configured. Please set environment variables in Railway.')
+      setIsLoading(false)
+      return
+    }
+    
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
