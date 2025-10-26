@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { createClient } from '@supabase/supabase-js'
 
 const prisma = new PrismaClient()
 
@@ -44,8 +45,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update username
-    console.log('✏️ Updating username...')
+    // Step 1: Update Prisma database
+    console.log('✏️ Updating username in database...')
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: { username: newUsername },
@@ -60,8 +61,45 @@ export async function POST(request: NextRequest) {
         photoUrls: true
       }
     })
+    console.log('✅ Database updated')
 
-    console.log('✅ Username updated successfully')
+    // Step 2: Update Supabase Auth metadata (so it persists on refresh)
+    try {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+      if (supabaseUrl && serviceRoleKey) {
+        console.log('🔐 Updating Supabase auth metadata...')
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        })
+
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+          userId,
+          {
+            user_metadata: {
+              username: newUsername,
+              name: newUsername
+            }
+          }
+        )
+
+        if (authError) {
+          console.error('⚠️ Failed to update Supabase auth metadata:', authError)
+          // Don't fail the request - database is already updated
+        } else {
+          console.log('✅ Supabase auth metadata updated')
+        }
+      } else {
+        console.log('⚠️ Supabase not configured - skipping auth metadata update')
+      }
+    } catch (authError) {
+      console.error('⚠️ Error updating Supabase auth:', authError)
+      // Don't fail the request - database is already updated
+    }
     
     return NextResponse.json({ 
       success: true,

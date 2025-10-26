@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
         id: authUser.id,
         email: authUser.email,
         name: authUser.user_metadata?.name || null,
+        username: authUser.user_metadata?.username,
         photoUrls: '[]',
         consentAudio: audio,
         consentChat: chat,

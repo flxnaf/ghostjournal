@@ -50,6 +50,21 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     createdAt: supabaseUser.created_at
   })
 
+  // Fetch username from database (source of truth)
+  const fetchUserProfile = async (userId: string): Promise<string | undefined> => {
+    try {
+      const response = await fetch(`/api/personality?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('📥 Fetched username from database:', data.username)
+        return data.username
+      }
+    } catch (error) {
+      console.error('⚠️ Failed to fetch username from database:', error)
+    }
+    return undefined
+  }
+
   // Check for existing session on mount
   useEffect(() => {
     // Check for admin bypass first
@@ -89,7 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
         if (error) {
           console.error('Error getting session:', error)
         } else if (session?.user) {
-          setUser(convertSupabaseUser(session.user))
+          const user = convertSupabaseUser(session.user)
+          // Fetch username from database (source of truth)
+          const dbUsername = await fetchUserProfile(session.user.id)
+          if (dbUsername) {
+            user.username = dbUsername
+          }
+          setUser(user)
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error)
@@ -104,7 +125,13 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          setUser(convertSupabaseUser(session.user))
+          const user = convertSupabaseUser(session.user)
+          // Fetch username from database (source of truth)
+          const dbUsername = await fetchUserProfile(session.user.id)
+          if (dbUsername) {
+            user.username = dbUsername
+          }
+          setUser(user)
         } else {
           setUser(null)
         }

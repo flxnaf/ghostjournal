@@ -39,11 +39,13 @@ export async function POST(request: NextRequest) {
       update: {
         email: authUser.email,
         name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+        username: authUser.user_metadata?.username,
       },
       create: {
         id: authUser.id,
         email: authUser.email,
         name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+        username: authUser.user_metadata?.username,
         photoUrls: '[]',
       }
     })
