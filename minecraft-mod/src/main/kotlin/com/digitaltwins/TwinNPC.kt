@@ -40,7 +40,7 @@ object TwinNPC {
         villager.customName = Text.literal(twinData.display_name)
         villager.isCustomNameVisible = true
         villager.isInvulnerable = true
-        villager.setAiDisabled(true)
+        villager.setCanPickUpLoot(false)
         villager.setPersistent()
 
         world.spawnEntity(villager)

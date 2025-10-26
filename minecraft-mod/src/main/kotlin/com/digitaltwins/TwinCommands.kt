@@ -2,6 +2,7 @@ package com.digitaltwins
 
 import com.digitaltwins.advanced.entity.ModEntities
 import com.digitaltwins.advanced.entity.TwinEntity
+import com.digitaltwins.advanced.network.PacketHandler
 import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.context.CommandContext
@@ -380,8 +381,8 @@ object TwinCommands {
                             false
                         )
 
-                        // Play audio in background
-                        TwinAudioPlayer.playAudioFromUrl(fullAudioUrl)
+                        // Play audio on the client that initiated the conversation
+                        PacketHandler.sendPlayAudio(player, fullAudioUrl)
                     }
                 }
             } catch (e: Exception) {
