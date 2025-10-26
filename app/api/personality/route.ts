@@ -72,7 +72,10 @@ export async function GET(request: NextRequest) {
         faceData: true,
         name: true,
         email: true,
-        createdAt: true
+        createdAt: true,
+        isPublic: true,
+        username: true,
+        bio: true
       }
     })
 

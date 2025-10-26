@@ -54,12 +54,29 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [browsingUserId, setBrowsingUserId] = useState<string | null>(null)
   const [browsingUserName, setBrowsingUserName] = useState<string | null>(null)
+  const [userIsPublic, setUserIsPublic] = useState(user.isPublic || false)
   const [voiceTraining, setVoiceTraining] = useState({
     isTraining: false,
     progress: 0,
     status: 'Not started',
     error: null as string | null
   })
+
+  // Refresh user's isPublic status when returning to dashboard
+  useEffect(() => {
+    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
+    if (view === 'dashboard' && !isAdminBypass) {
+      console.log('🔄 Refreshing user isPublic status...')
+      axios.get(`/api/personality?userId=${user.id}`)
+        .then(res => {
+          console.log('✅ Updated isPublic:', res.data.isPublic)
+          setUserIsPublic(res.data.isPublic || false)
+          // Also update the user object so it's fresh for the Dashboard component
+          user.isPublic = res.data.isPublic || false
+        })
+        .catch(err => console.error('Failed to refresh user status:', err))
+    }
+  }, [view, user.id])
 
   // Check if user has already given consent and if they have audio
   useEffect(() => {

@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { User, Users, Trash2, Globe, Lock } from 'lucide-react'
 
@@ -18,6 +18,12 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPublic, setIsPublic] = useState(user.isPublic || false)
   const [isTogglingPublic, setIsTogglingPublic] = useState(false)
+
+  // Sync local state with user prop changes
+  useEffect(() => {
+    console.log('🔄 Dashboard: Syncing isPublic state with user prop:', user.isPublic)
+    setIsPublic(user.isPublic || false)
+  }, [user.isPublic])
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
