@@ -215,31 +215,54 @@ export default function LandingPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {isSignup && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Username *</label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                        required
+                        className="w-full px-4 py-3 bg-dark-bg border border-white/20 rounded-lg
+                                 text-white focus:border-white focus:outline-none"
+                        placeholder="username_123"
+                        pattern="[a-z0-9_]+"
+                        title="Only lowercase letters, numbers, and underscores"
+                        minLength={3}
+                        maxLength={20}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        3-20 characters: lowercase, numbers, underscores only
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Display Name (optional)</label>
+                      <input
+                        type="text"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full px-4 py-3 bg-dark-bg border border-white/20 rounded-lg
+                                 text-white focus:border-white focus:outline-none"
+                        placeholder="Your Name"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {!isSignup && (
                   <div>
-                    <label className="block text-sm font-medium mb-2">Name (optional)</label>
+                    <label className="block text-sm font-medium mb-2">Username or Email</label>
                     <input
                       type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
                       className="w-full px-4 py-3 bg-dark-bg border border-white/20 rounded-lg
                                text-white focus:border-white focus:outline-none"
-                      placeholder="Your name"
+                      placeholder="username or email@example.com"
                     />
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full px-4 py-3 bg-dark-bg border border-white/20 rounded-lg
-                             text-white focus:border-white focus:outline-none"
-                    placeholder="you@example.com"
-                  />
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium mb-2">Password</label>
