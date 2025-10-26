@@ -295,7 +295,20 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
               <p className="text-sm text-gray-400">Logged in as</p>
               <p className="text-white font-medium">@{user.username || user.name || user.email}</p>
             </div>
-            {view !== 'dashboard' && (
+            {browsingUserId && (
+              <button
+                onClick={() => {
+                  setView('browse')
+                  setBrowsingUserId(null)
+                  setBrowsingUserName(null)
+                }}
+                className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                         hover:bg-white/20 transition-colors"
+              >
+                ← Back to Browse
+              </button>
+            )}
+            {view !== 'dashboard' && !browsingUserId && (
               <button
                 onClick={() => {
                   setView('dashboard')
@@ -459,6 +472,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                 currentUserId={user.id}
                 isOwner={!browsingUserId || browsingUserId === user.id}
                 ownerName={browsingUserId ? browsingUserName : null}
+                username={browsingUserId ? browsingUserName : (user.username || user.name)}
               />
             )}
           </motion.div>

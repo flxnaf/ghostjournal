@@ -7,6 +7,7 @@ import { Download, Heart, BookOpen, RotateCcw, Smile, Target, Brain, Trophy, Sta
 
 interface ContextBuilderProps {
   userId: string
+  username?: string
 }
 
 interface ContextEntry {
@@ -16,7 +17,7 @@ interface ContextEntry {
   timestamp: Date
 }
 
-export default function ContextBuilder({ userId }: ContextBuilderProps) {
+export default function ContextBuilder({ userId, username }: ContextBuilderProps) {
   const [entries, setEntries] = useState<ContextEntry[]>([])
   const [newEntry, setNewEntry] = useState({ category: 'story', content: '' })
   const [saving, setSaving] = useState(false)
@@ -246,6 +247,7 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       // User metadata
       metadata: {
         name: userData.name || 'Unknown',
+        username: username || userData.username || 'unknown',
         email: userData.email || null,
         createdAt: userData.createdAt || new Date().toISOString(),
         
@@ -262,7 +264,8 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `clone-data-${userId}-${Date.now()}.json`
+    const downloadUsername = username || userData.username || 'clone'
+    a.download = `${downloadUsername}_clone.json`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
