@@ -172,7 +172,7 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
       </div>
 
       {/* Clone Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredClones.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <p className="text-gray-400 text-lg">
@@ -216,18 +216,18 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
               {/* Actions */}
               <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
                 <button className="w-full py-3 bg-blue-500 hover:bg-blue-600 
-                                 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
-                  <MessageCircle className="w-5 h-5" />
-                  Chat
+                                 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                  <MessageCircle className="w-5 h-5 flex-shrink-0" />
+                  <span>Chat</span>
                 </button>
                 <button
                   onClick={(e) => downloadClone(clone, e)}
                   className="w-full py-3 bg-white/10 hover:bg-white/20 
                            text-white font-semibold rounded-lg transition-colors
-                           border border-white/30 hover:border-white/50 flex items-center justify-center gap-2"
+                           border border-white/30 hover:border-white/50 flex items-center justify-center gap-2 whitespace-nowrap"
                 >
-                  <Download className="w-5 h-5" />
-                  Download
+                  <Download className="w-5 h-5 flex-shrink-0" />
+                  <span>Download</span>
                 </button>
               </div>
             </motion.div>
