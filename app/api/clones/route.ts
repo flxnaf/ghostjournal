@@ -9,8 +9,10 @@ const prisma = new PrismaClient()
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 /api/clones - Fetching public clones...')
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
+    console.log('   Search query:', search || '(none)')
 
     // Fetch public users
     const users = await prisma.user.findMany({
@@ -49,11 +51,15 @@ export async function GET(request: NextRequest) {
       hasVoiceModel: !!user.voiceModelId
     }))
 
+    console.log(`✅ Returning ${clones.length} public clones`)
     return NextResponse.json({ clones })
   } catch (error: any) {
     console.error('❌ Error fetching clones:', error)
+    console.error('   Error message:', error.message)
+    console.error('   Error code:', error.code)
+    console.error('   Error stack:', error.stack)
     return NextResponse.json(
-      { error: 'Failed to fetch clones', details: error.message },
+      { error: 'Failed to fetch clones', details: error.message, code: error.code },
       { status: 500 }
     )
   }
