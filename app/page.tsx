@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Recorder from '@/components/Recorder'
 import Uploader from '@/components/Uploader'
 import CloneChat from '@/components/CloneChat'
 import LandingPage from '@/components/LandingPage'
+import ConsentDialog from '@/components/ConsentDialog'
 import { useAuth } from '@/lib/hooks/useAuth'
 import axios from 'axios'
 
@@ -30,6 +31,8 @@ export default function Home() {
 }
 
 function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
+  const [showConsent, setShowConsent] = useState(false)
+  const [consentGiven, setConsentGiven] = useState(false)
   const [step, setStep] = useState<'record' | 'upload' | 'chat'>('record')
   const [userId, setUserId] = useState<string | null>(null)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
@@ -38,6 +41,47 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
     progress: 0,
     status: 'Not started'
   })
+
+  // Check if user has already given consent
+  useEffect(() => {
+    const checkConsent = async () => {
+      try {
+        const response = await axios.get(`/api/user-consent?userId=${user.id}`)
+        if (response.data.hasConsent) {
+          setConsentGiven(true)
+        } else {
+          setShowConsent(true)
+        }
+      } catch (error) {
+        // If error, show consent dialog to be safe
+        setShowConsent(true)
+      }
+    }
+    checkConsent()
+  }, [user.id])
+
+  const handleConsentAccept = async (consent: {
+    audio: boolean
+    chat: boolean
+    context: boolean
+    faceData: boolean
+  }) => {
+    try {
+      await axios.post('/api/save-consent', {
+        userId: user.id,
+        ...consent
+      })
+      setConsentGiven(true)
+      setShowConsent(false)
+    } catch (error) {
+      console.error('Failed to save consent:', error)
+      alert('Failed to save consent. Please try again.')
+    }
+  }
+
+  const handleConsentDecline = () => {
+    alert('You must accept data storage to use GhostJournal. You can customize what data to save.')
+  }
 
   const handleRecordingComplete = async (blob: Blob) => {
     console.log('🎤 Recording complete! Blob size:', blob.size, 'bytes')
@@ -96,20 +140,37 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      {/* User Info & Logout */}
-      <div className="absolute top-6 right-6 flex items-center gap-4">
-        <div className="text-right">
-          <p className="text-sm text-gray-400">Logged in as</p>
-          <p className="text-white font-medium">{user.name || user.email}</p>
+      {/* Consent Dialog */}
+      <ConsentDialog
+        isOpen={showConsent}
+        onAccept={handleConsentAccept}
+        onDecline={handleConsentDecline}
+      />
+
+      {/* Block UI until consent is given */}
+      {!consentGiven && !showConsent && (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
         </div>
-        <button
-          onClick={logout}
-          className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
-                   hover:bg-white hover:text-black transition-colors"
-        >
-          Logout
-        </button>
-      </div>
+      )}
+
+      {/* Main app - only show after consent */}
+      {consentGiven && (
+        <>
+          {/* User Info & Logout */}
+          <div className="absolute top-6 right-6 flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm text-gray-400">Logged in as</p>
+              <p className="text-white font-medium">{user.name || user.email}</p>
+            </div>
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                       hover:bg-white hover:text-black transition-colors"
+            >
+              Logout
+            </button>
+          </div>
 
       {/* Header */}
       <motion.div
@@ -180,6 +241,8 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl animate-pulse-slow" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white opacity-5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '1s' }} />
       </div>
+        </>
+      )}
     </main>
   )
 }
