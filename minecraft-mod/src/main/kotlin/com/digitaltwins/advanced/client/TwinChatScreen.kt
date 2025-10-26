@@ -289,12 +289,12 @@ class TwinChatScreen(
                         
                         println("   fullAudioUrl: $fullAudioUrl")
                         chatHistory.add("§a♪ Playing voice...")
-                        
+
                         try {
-                            TwinAudioPlayer.playAudioFromUrl(fullAudioUrl)
-                            println("   ✅ Audio playback started")
+                            TwinAudioPlayer.enqueue(fullAudioUrl)
+                            println("   ✅ Audio queued for playback")
                         } catch (e: Exception) {
-                            println("   ❌ Audio playback failed: ${e.message}")
+                            println("   ❌ Audio enqueue failed: ${e.message}")
                             chatHistory.add("§c✗ Audio playback failed")
                         }
                     } else {
