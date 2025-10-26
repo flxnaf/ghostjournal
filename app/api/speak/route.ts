@@ -102,9 +102,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get personality data
+    console.log('🎭 Loading personality data...')
+    console.log('   Raw personalityData:', user.personalityData ? 'Present' : 'NULL')
     const personality = user.personalityData 
       ? JSON.parse(user.personalityData) 
       : null
+    console.log('   Parsed personality:', personality ? 'Present' : 'NULL')
+    if (personality) {
+      console.log('   Personality keys:', Object.keys(personality))
+      console.log('   Personality sample:', JSON.stringify(personality).substring(0, 200))
+    }
 
     // Query relevant memories with timeout
     console.log('🧠 Querying memories...')
@@ -175,6 +182,11 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
 
     // Generate response with Claude
     console.log('🤖 Generating Claude response...')
+    console.log('   Personality prompt length:', personalityPrompt.length)
+    console.log('   Using personality:', personality ? 'YES' : 'NO (default prompt)')
+    console.log('   Memory context length:', memoryContext.length)
+    console.log('   Has memories:', memories.length > 0)
+    
     const responseText = await generateResponse(
       message,
       conversationHistory,
