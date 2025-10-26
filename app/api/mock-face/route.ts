@@ -6,6 +6,42 @@ interface FaceContour {
   connects_to: string[]
 }
 
+/**
+ * Generate a parabolic curve for hair (flows naturally)
+ * @param xStart - Left x position
+ * @param xEnd - Right x position
+ * @param yBase - Base y position (bottom of curve)
+ * @param yPeak - Peak y position (top of curve at center)
+ * @param zDepth - Z depth
+ * @param numPoints - Number of points along curve
+ */
+function generateHairCurve(
+  xStart: number,
+  xEnd: number,
+  yBase: number,
+  yPeak: number,
+  zDepth: number,
+  numPoints: number
+): [number, number, number][] {
+  const points: [number, number, number][] = []
+  const width = xEnd - xStart
+  const height = yPeak - yBase
+  
+  for (let i = 0; i < numPoints; i++) {
+    const t = i / (numPoints - 1)  // 0 to 1
+    const x = xStart + width * t
+    
+    // Parabolic curve: y = -4*height*(t - 0.5)^2 + yPeak
+    // This creates a smooth arc that peaks in the middle
+    const parabola = -4 * height * Math.pow(t - 0.5, 2) + height
+    const y = yBase + parabola
+    
+    points.push([x, y, zDepth])
+  }
+  
+  return points
+}
+
 function generateMockFaceContours(): FaceContour[] {
   // Full 3D head: face + hair + back scaffold (with MUCH more depth)
   return [
@@ -113,84 +149,24 @@ function generateMockFaceContours(): FaceContour[] {
       connects_to: ['jawline', 'mouth_outline']
     },
     
-    // HAIR - Cohesive shape with natural waves/flow
-    // Front hairline with wavy texture (main visible hair)
-    {
-      name: 'hair_front',
-      points: [
-        [-0.5, 0.5, 0.18],   // Left temple start
-        [-0.42, 0.55, 0.2],  // Wave peak 1
-        [-0.32, 0.58, 0.21], // Wave dip 1
-        [-0.22, 0.61, 0.22], // Wave peak 2
-        [-0.12, 0.62, 0.23], // Center dip
-        [0, 0.63, 0.23],     // Center
-        [0.12, 0.62, 0.23],  // Center dip
-        [0.22, 0.61, 0.22],  // Wave peak 3
-        [0.32, 0.58, 0.21],  // Wave dip 2
-        [0.42, 0.55, 0.2],   // Wave peak 4
-        [0.5, 0.5, 0.18]     // Right temple start
-      ],
-      connects_to: ['forehead', 'hair_left_side', 'hair_right_side']
-    },
-    // Left side flowing hair (wavy curtain)
-    {
-      name: 'hair_left_side',
-      points: [
-        [-0.5, 0.5, 0.18],    // Temple
-        [-0.55, 0.4, 0.13],   // Wave out
-        [-0.58, 0.3, 0.08],   // Wave in
-        [-0.62, 0.18, 0.02],  // Wave out
-        [-0.64, 0.05, -0.04], // Wave in
-        [-0.65, -0.08, -0.08],// Wave out
-        [-0.64, -0.2, -0.12], // Wave in (ends near ear)
-        [-0.62, -0.32, -0.14] // End
-      ],
-      connects_to: ['hair_front', 'jawline']
-    },
-    // Right side flowing hair (wavy curtain)
-    {
-      name: 'hair_right_side',
-      points: [
-        [0.5, 0.5, 0.18],     // Temple
-        [0.55, 0.4, 0.13],    // Wave out
-        [0.58, 0.3, 0.08],    // Wave in
-        [0.62, 0.18, 0.02],   // Wave out
-        [0.64, 0.05, -0.04],  // Wave in
-        [0.65, -0.08, -0.08], // Wave out
-        [0.64, -0.2, -0.12],  // Wave in
-        [0.62, -0.32, -0.14]  // End
-      ],
-      connects_to: ['hair_front', 'jawline']
-    },
-    // Top of head hair volume (wavy)
+    // HAIR - Simple arc over the head (front-facing view)
+    // Just the crown/top - no side sections to avoid overlapping face
     {
       name: 'hair_top',
       points: [
-        [-0.45, 0.65, 0.12],  // Left peak
-        [-0.32, 0.72, 0.06],  // Dip
-        [-0.18, 0.78, 0.0],   // Peak
-        [-0.05, 0.81, -0.03], // Dip
-        [0, 0.82, -0.05],     // Center highest
-        [0.05, 0.81, -0.03],  // Dip
-        [0.18, 0.78, 0.0],    // Peak
-        [0.32, 0.72, 0.06],   // Dip
-        [0.45, 0.65, 0.12]    // Right peak
+        [-0.48, 0.38, 0.18],  // Left temple (start visible)
+        [-0.45, 0.50, 0.20],  // Curve upward
+        [-0.38, 0.60, 0.21],
+        [-0.28, 0.68, 0.22],
+        [-0.15, 0.72, 0.22],
+        [0, 0.74, 0.22],      // Crown peak
+        [0.15, 0.72, 0.22],
+        [0.28, 0.68, 0.22],
+        [0.38, 0.60, 0.21],
+        [0.45, 0.50, 0.20],   // Curve downward
+        [0.48, 0.38, 0.18]    // Right temple (end visible)
       ],
-      connects_to: ['hair_front', 'forehead']
-    },
-    // Inner hair layer (adds volume/thickness - closer to face)
-    {
-      name: 'hair_inner',
-      points: [
-        [-0.44, 0.48, 0.22],  // Left
-        [-0.3, 0.52, 0.24],   // Wave
-        [-0.15, 0.54, 0.25],  // Wave
-        [0, 0.55, 0.26],      // Center
-        [0.15, 0.54, 0.25],   // Wave
-        [0.3, 0.52, 0.24],    // Wave
-        [0.44, 0.48, 0.22]    // Right
-      ],
-      connects_to: ['hair_front', 'forehead']
+      connects_to: ['forehead']
     },
     
     // NECK (minimal - just front connection)

@@ -68,13 +68,22 @@ function extractFaceMeasurements(landmarks: any[]) {
   }
 }
 
+interface HairStyle {
+  length: string
+  volume: string
+  direction: string
+  texture: string
+  style: string
+}
+
 /**
  * Apply MediaPipe measurements to modify the mock face contours
- * Now accepts RAW landmarks for accurate measurements
+ * Now accepts RAW landmarks for accurate measurements + hair description from Claude
  */
 export function applyMediapipeToMockFace(
   rawLandmarks: any[],
-  mockFaceContours: FaceContour[]
+  mockFaceContours: FaceContour[],
+  hairDescription?: HairStyle | null
 ): FaceContour[] {
   console.log('🎭 Applying MediaPipe measurements to 2.5D face template...')
   console.log(`   Processing ${rawLandmarks.length} landmarks`)
@@ -87,62 +96,151 @@ export function applyMediapipeToMockFace(
   // Extract measurements from raw landmarks
   const measurements = extractFaceMeasurements(rawLandmarks)
   
-  // Calculate scaling factors relative to mock face "standard" proportions
-  // MediaPipe typical measurements (in 0-1 space)
-  const MEDIAPIPE_BASE_FACE_WIDTH = 0.6
-  const MEDIAPIPE_BASE_EYE_DISTANCE = 0.15
-  const MEDIAPIPE_BASE_NOSE_WIDTH = 0.04
-  const MEDIAPIPE_BASE_MOUTH_WIDTH = 0.13
+  // USE RELATIVE PROPORTIONS instead of absolute frame measurements
+  // This makes faces look natural regardless of camera distance
   
-  let faceWidthScale = measurements.faceWidth / MEDIAPIPE_BASE_FACE_WIDTH
-  let eyeScale = measurements.eyeDistance / MEDIAPIPE_BASE_EYE_DISTANCE
-  let noseScale = measurements.noseWidth / MEDIAPIPE_BASE_NOSE_WIDTH
-  let mouthScale = measurements.mouthWidth / MEDIAPIPE_BASE_MOUTH_WIDTH
+  // Key insight: Use ratios WITHIN the face, not absolute frame positions
+  const eyeDistanceToFaceWidth = measurements.eyeDistance / measurements.faceWidth
+  const noseToFaceWidth = measurements.noseWidth / measurements.faceWidth
+  const mouthToFaceWidth = measurements.mouthWidth / measurements.faceWidth
+  const faceAspectRatio = measurements.faceWidth / measurements.faceHeight
   
-  // Clamp scaling to reasonable bounds but ALLOW MORE VARIATION for distinctiveness
+  // Typical proportions (these are actual human face ratios)
+  const TYPICAL_EYE_TO_FACE = 0.25  // Eyes are ~25% of face width apart
+  const TYPICAL_NOSE_TO_FACE = 0.30  // Nose is ~30% of face width
+  const TYPICAL_MOUTH_TO_FACE = 0.35 // Mouth is ~35% of face width
+  const TYPICAL_ASPECT_RATIO = 0.75  // Face width / height ratio
+  
+  // Calculate scales based on INTERNAL face proportions
+  let faceWidthScale = faceAspectRatio / TYPICAL_ASPECT_RATIO
+  let eyeScale = eyeDistanceToFaceWidth / TYPICAL_EYE_TO_FACE
+  let noseScale = noseToFaceWidth / TYPICAL_NOSE_TO_FACE
+  let mouthScale = mouthToFaceWidth / TYPICAL_MOUTH_TO_FACE
+  
+  // Apply reasonable bounds to prevent extreme distortion while allowing variation
   const clamp = (val: number, min: number, max: number) => Math.max(min, Math.min(max, val))
   const rawFaceWidth = faceWidthScale
   const rawEye = eyeScale
   const rawNose = noseScale
   const rawMouth = mouthScale
   
-  // Use WIDER range (0.7-1.4x) to make faces more distinguishable
-  faceWidthScale = clamp(faceWidthScale, 0.7, 1.4)
+  faceWidthScale = clamp(faceWidthScale, 0.7, 1.4)  // 30% narrower to 40% wider
   eyeScale = clamp(eyeScale, 0.7, 1.4)
   noseScale = clamp(noseScale, 0.7, 1.4)
   mouthScale = clamp(mouthScale, 0.7, 1.4)
   
-  // Calculate hair style from MediaPipe landmarks
-  // Detect if hair goes UP (spiky) or DOWN (flat) by looking at top head landmarks
-  const topHead = rawLandmarks[10]  // Forehead top
-  const hairlineTop = rawLandmarks[151] // Top of head
+  // GENERATE HAIR STYLE from Claude Vision analysis or fallback to face-based
+  let hairHeight = 1.0      // How tall/voluminous (0.5-1.6)
+  let hairWidth = 1.0       // How wide it spreads (0.8-1.3)
+  let hairSpikiness = 0.0   // How spiky vs flat (-0.4 to 0.6)
+  let hairDensity = 1.0     // How many hair lines (0.7-1.3)
+  let hairStyleName = 'Medium'
   
-  // If hairline is significantly higher than forehead = spiky/up hair
-  // If hairline is close to forehead = flat/down hair
-  const hairDirection = (hairlineTop.y < topHead.y - 0.05) ? 'up' : 'down'
-  const hairSpikyFactor = hairDirection === 'up' ? 1.4 : 0.9  // Spiky = stretch upward
+  if (hairDescription) {
+    console.log(`   💇 Using REAL hair analysis from photo: "${hairDescription.style}"`)
+    console.log(`      Length: ${hairDescription.length}, Volume: ${hairDescription.volume}, Direction: ${hairDescription.direction}, Texture: ${hairDescription.texture}`)
+    
+    // Map LENGTH
+    const length = hairDescription.length.toLowerCase()
+    if (length.includes('very short')) {
+      hairHeight = 0.55
+      hairStyleName = 'Very Short'
+    } else if (length.includes('short')) {
+      hairHeight = 0.7
+      hairStyleName = 'Short'
+    } else if (length.includes('long') || length.includes('very long')) {
+      hairHeight = 1.4
+      hairStyleName = 'Long'
+    } else {
+      hairHeight = 1.0
+      hairStyleName = 'Medium'
+    }
+    
+    // Map VOLUME
+    const volume = hairDescription.volume.toLowerCase()
+    if (volume.includes('flat') || volume.includes('low')) {
+      hairWidth = 0.85
+      hairDensity = 0.75
+    } else if (volume.includes('high') || volume.includes('very high')) {
+      hairWidth = 1.25
+      hairDensity = 1.25
+      hairHeight *= 1.2  // High volume = taller too
+    } else {
+      hairWidth = 1.0
+      hairDensity = 1.0
+    }
+    
+    // Map DIRECTION
+    const direction = hairDescription.direction.toLowerCase()
+    if (direction.includes('up') || direction.includes('spiky')) {
+      hairSpikiness = 0.5
+      hairStyleName += '/Spiky'
+    } else if (direction.includes('down') || direction.includes('flat')) {
+      hairSpikiness = -0.35
+      hairStyleName += '/Flat'
+    } else if (direction.includes('messy')) {
+      hairSpikiness = 0.2
+      hairWidth *= 1.1
+      hairStyleName += '/Messy'
+    } else {
+      hairSpikiness = 0.0
+    }
+    
+    // Map TEXTURE
+    const texture = hairDescription.texture.toLowerCase()
+    if (texture.includes('curly') || texture.includes('very curly')) {
+      hairWidth *= 1.15
+      hairDensity *= 1.2
+      hairStyleName += '/Curly'
+    } else if (texture.includes('wavy')) {
+      hairWidth *= 1.05
+      hairStyleName += '/Wavy'
+    }
+    
+  } else {
+    // FALLBACK: Generate diverse styles based on face characteristics
+    console.log('   💇 No hair analysis available, using face-based generation')
+    
+    const hairSeed = Math.floor((measurements.faceWidth * 1000 + measurements.faceHeight * 1000 + measurements.faceRatio * 1000) % 100)
+    const hairStyleType = hairSeed % 6
+    
+    if (hairStyleType === 0) {
+      hairHeight = 0.7; hairWidth = 0.9; hairSpikiness = -0.2; hairDensity = 0.8; hairStyleName = 'Short/Neat'
+    } else if (hairStyleType === 1) {
+      hairHeight = 1.4; hairWidth = 1.15; hairSpikiness = 0.3; hairDensity = 1.2; hairStyleName = 'Tall/Voluminous'
+    } else if (hairStyleType === 2) {
+      hairHeight = 1.3; hairWidth = 0.95; hairSpikiness = 0.5; hairDensity = 0.9; hairStyleName = 'Spiky/Up'
+    } else if (hairStyleType === 3) {
+      hairHeight = 0.9; hairWidth = 1.25; hairSpikiness = -0.1; hairDensity = 1.1; hairStyleName = 'Wide/Swept'
+    } else if (hairStyleType === 4) {
+      hairHeight = 1.1; hairWidth = 1.05; hairSpikiness = 0.1; hairDensity = 1.15; hairStyleName = 'Medium/Wavy'
+    } else {
+      hairHeight = 0.65; hairWidth = 0.85; hairSpikiness = -0.3; hairDensity = 0.75; hairStyleName = 'Flat/Close'
+    }
+  }
   
-  console.log(`   🎨 Hair style detected: ${hairDirection} (spiky factor: ${hairSpikyFactor.toFixed(2)}x)`)
+  console.log(`   💇 Final hair style: "${hairStyleName}"`)
+  console.log(`      Height: ${hairHeight.toFixed(2)}x, Width: ${hairWidth.toFixed(2)}x, Spikiness: ${hairSpikiness.toFixed(2)}, Density: ${hairDensity.toFixed(2)}`)
   
-  // Hair length and width variation
-  const hairLengthMultiplier = 0.8 + (measurements.faceHeight * 1.5)
-  const hairWidthMultiplier = 0.9 + (measurements.faceWidth * 0.8)
-  const hairClamp = clamp(hairLengthMultiplier, 0.7, 1.5)
-  const hairWidthClamp = clamp(hairWidthMultiplier, 0.8, 1.3)
-  
+  // Clamp hair values to reasonable bounds
+  hairHeight = clamp(hairHeight, 0.5, 1.6)
+  hairWidth = clamp(hairWidth, 0.8, 1.35)
+  hairSpikiness = clamp(hairSpikiness, -0.4, 0.6)
+  hairDensity = clamp(hairDensity, 0.7, 1.3)
+
+  console.log('📊 FACE-RELATIVE PROPORTIONS (internal ratios):')
+  console.log(`   Eye-to-face ratio: ${eyeDistanceToFaceWidth.toFixed(3)} (typical: ${TYPICAL_EYE_TO_FACE})`)
+  console.log(`   Nose-to-face ratio: ${noseToFaceWidth.toFixed(3)} (typical: ${TYPICAL_NOSE_TO_FACE})`)
+  console.log(`   Mouth-to-face ratio: ${mouthToFaceWidth.toFixed(3)} (typical: ${TYPICAL_MOUTH_TO_FACE})`)
+  console.log(`   Face aspect ratio: ${faceAspectRatio.toFixed(3)} (typical: ${TYPICAL_ASPECT_RATIO})`)
   console.log('📊 RAW scaling factors (before clamp):')
-  console.log(`   Face width: ${rawFaceWidth.toFixed(2)}x`)
-  console.log(`   Eye spacing: ${rawEye.toFixed(2)}x`)
-  console.log(`   Nose: ${rawNose.toFixed(2)}x`)
-  console.log(`   Mouth: ${rawMouth.toFixed(2)}x`)
-  console.log('📊 APPLIED scaling factors (clamped 0.7-1.4x):')
-  console.log(`   Face width: ${faceWidthScale.toFixed(3)}x (raw: ${rawFaceWidth.toFixed(3)}x)`)
-  console.log(`   Eye spacing: ${eyeScale.toFixed(3)}x (raw: ${rawEye.toFixed(3)}x)`)
-  console.log(`   Nose: ${noseScale.toFixed(3)}x (raw: ${rawNose.toFixed(3)}x)`)
-  console.log(`   Mouth: ${mouthScale.toFixed(3)}x (raw: ${rawMouth.toFixed(3)}x)`)
-  console.log(`   Hair length: ${hairClamp.toFixed(3)}x`)
-  console.log(`   Hair width: ${hairWidthClamp.toFixed(3)}x`)
-  console.log('   ⚠️  If all scales are ~1.000x, face will look identical to mock!')
+  console.log(`   Face width: ${rawFaceWidth.toFixed(3)}x, Eye: ${rawEye.toFixed(3)}x, Nose: ${rawNose.toFixed(3)}x, Mouth: ${rawMouth.toFixed(3)}x`)
+  console.log('📊 APPLIED scaling factors (clamped 0.7-1.4x for natural look):')
+  console.log(`   Face width: ${faceWidthScale.toFixed(3)}x`)
+  console.log(`   Eye spacing: ${eyeScale.toFixed(3)}x`)
+  console.log(`   Nose: ${noseScale.toFixed(3)}x`)
+  console.log(`   Mouth: ${mouthScale.toFixed(3)}x`)
+  console.log(`   Hair: ${hairHeight.toFixed(3)}x height, ${hairWidth.toFixed(3)}x width, ${hairSpikiness.toFixed(3)} spikiness`)
   
   // Apply proportional scaling to mock face (2.5D approach)
   const scaledMockFace = mockFaceContours.map(contour => {
@@ -174,19 +272,26 @@ export function applyMediapipeToMockFace(
         // Mouth: scale based on mouth width
         newX = x * mouthScale
       }
-      else if (contour.name.includes('hair')) {
-        // Hair: scale width AND apply spiky/flat styling
-        newX = x * hairWidthClamp
-        
-        // Apply hair direction styling
-        if (y > 0.4) {  // Upper hair (above forehead)
-          // Spiky hair = stretch UPWARD, flat hair = compress downward
-          newY = y * hairSpikyFactor
-        } else if (y < 0) {  // Lower hair (sides, below forehead)
-          // Side/bottom hair follows length
-          newY = y * hairClamp
-        }
-      }
+          else if (contour.name.includes('hair')) {
+            // Apply hair styling to the simple top arc
+            newX = x * hairWidth * faceWidthScale  // Scale with face width
+            
+            // TOP ARC - the crown/main hair volume
+            // Apply height/volume/spikiness
+            if (y > 0.50) {
+              // Upper part (crown) - main styling area
+              const distanceFromBase = y - 0.50
+              newY = 0.50 + (distanceFromBase * hairHeight) + (hairSpikiness * 0.20)
+              
+              // Add width variation at top for volume
+              const heightFactor = (y - 0.50) / 0.24  // 0 at base, 1 at top
+              newX = newX * (1 + (hairWidth - 1) * heightFactor * 0.5)
+            } else {
+              // Temple connection points (base) - minimal scaling
+              newY = y
+              newX = newX * hairWidth
+            }
+          }
       else if (contour.name.includes('neck')) {
         // Neck scales with face width
         newX = x * faceWidthScale

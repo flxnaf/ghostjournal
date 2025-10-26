@@ -32,6 +32,7 @@ export default function CloneChat({ userId }: CloneChatProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioData, setAudioData] = useState<number[]>([])
   const [currentEmotion, setCurrentEmotion] = useState<string>('neutral')
+  const [canInterrupt, setCanInterrupt] = useState(true)
   
   // Store userId in sessionStorage for FaceWaveform3D
   useEffect(() => {
@@ -114,19 +115,28 @@ export default function CloneChat({ userId }: CloneChatProps) {
     const lowerText = text.toLowerCase()
     
     // Anger/frustration - check for negative tone
-    if (lowerText.match(/\b(hate|annoying|piss|irritat|frustrat|stupid|idiot|damn|hell|screw|fuck|angry|mad|rage)\b/)) return 'anger'
+    if (lowerText.match(/\b(hate|annoying|piss|irritat|frustrat|stupid|idiot|damn|hell|screw|fuck|angry|mad|rage|furious)\b/)) return 'anger'
     
-    // Concern/worry
-    if (lowerText.match(/\b(worried|concerned|anxious|nervous|careful|cautious)\b/)) return 'concern'
+    // Disgust
+    if (lowerText.match(/\b(gross|disgusting|eww|yuck|nasty|revolting|sick|vomit|gag)\b/)) return 'disgust'
     
-    // Strong positive emotions
-    if (lowerText.match(/\b(happy|joy|awesome|amazing|great|love|excited|thrilled|perfect|fantastic)\b/)) return 'joy'
+    // Surprise/shock
+    if (lowerText.match(/\b(wow|whoa|oh my|omg|what|shocked|surprised|unbelievable|incredible|no way)\b/)) return 'surprise'
     
-    // Sadness
-    if (lowerText.match(/\b(sad|depressed|down|disappointed|sorry|unfortunate)\b/)) return 'sadness'
+    // Love/affection
+    if (lowerText.match(/\b(love|adore|cherish|treasure|heart|sweetheart|darling|dear)\b/)) return 'love'
+    
+    // Strong positive emotions (joy)
+    if (lowerText.match(/\b(happy|joy|awesome|amazing|great|excited|thrilled|perfect|fantastic|wonderful)\b/)) return 'joy'
+    
+    // Sadness (check early before joy/love can catch "sorry")
+    if (lowerText.match(/\b(sad|sadness|depressed|depression|down|blue|disappointed|disappointment|sorry|unfortunate|miserable|heartbroken|unhappy|gloomy|melancholy|grief|sorrow|crying|cry|tears|weep)\b/)) return 'sadness'
     
     // Fear
-    if (lowerText.match(/\b(scared|afraid|frightened|terrified|fear|panic)\b/)) return 'fear'
+    if (lowerText.match(/\b(scared|afraid|frightened|terrified|fear|panic|horror)\b/)) return 'fear'
+    
+    // Concern/worry
+    if (lowerText.match(/\b(worried|concerned|anxious|nervous|careful|cautious|uneasy)\b/)) return 'concern'
     
     // Calm/neutral
     if (lowerText.match(/\b(calm|collected|cool|relax|chill|shrug|no big deal|whatever|fine|okay)\b/)) return 'neutral'
@@ -134,15 +144,20 @@ export default function CloneChat({ userId }: CloneChatProps) {
     return 'neutral'
   }
 
-  const analyzeAudio = () => {
+  const analyzeAudio = (forceStart: boolean = false) => {
+    const shouldContinue = forceStart || isPlaying
+    
     if (!analyserRef.current) {
       // No analyzer - generate fake waveform data for visualization
-      if (isPlaying) {
+      if (shouldContinue) {
         const fakeData = Array.from({ length: 128 }, () => 
-          Math.random() * 0.5 + (Math.sin(Date.now() / 100) * 0.25 + 0.25)
+          Math.random() * 0.6 + (Math.sin(Date.now() / 100) * 0.3 + 0.3)  // Higher values for more visible effect
         )
         setAudioData(fakeData)
-        animationFrameRef.current = requestAnimationFrame(analyzeAudio)
+        const avg = (fakeData.reduce((a,b) => a+b, 0) / fakeData.length)
+        console.log(`%c🎵 Generating FAKE waveform:`, 'color: magenta; font-weight: bold', 
+          `${fakeData.length} samples, avg=${avg.toFixed(3)}`)
+        animationFrameRef.current = requestAnimationFrame(() => analyzeAudio())
       }
       return
     }
@@ -154,8 +169,8 @@ export default function CloneChat({ userId }: CloneChatProps) {
     const normalized = Array.from(dataArray).map(val => val / 255)
     setAudioData(normalized)
 
-    if (isPlaying) {
-      animationFrameRef.current = requestAnimationFrame(analyzeAudio)
+    if (shouldContinue) {
+      animationFrameRef.current = requestAnimationFrame(() => analyzeAudio())
     }
   }
 
@@ -229,18 +244,34 @@ export default function CloneChat({ userId }: CloneChatProps) {
       audio.onplay = () => {
         console.log('▶️ Audio PLAYING event fired')
         setIsPlaying(true)
-        analyzeAudio()
+        setCanInterrupt(false) // Disable input while playing
+        // Force start the waveform animation (bypass async state)
+        analyzeAudio(true)
       }
 
       audio.onended = () => {
         console.log('⏹️ Audio ENDED event fired')
         setIsPlaying(false)
         setAudioData([])
+        setCurrentEmotion('neutral') // Reset to white when audio stops
+        setCanInterrupt(true) // Re-enable input
+        // Stop the animation loop
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current)
+          animationFrameRef.current = undefined
+        }
       }
       
       audio.onpause = () => {
         console.log('⏸️ Audio PAUSED event fired')
         setIsPlaying(false)
+        setCurrentEmotion('neutral') // Reset to white when audio pauses
+        setCanInterrupt(true) // Re-enable input
+        // Stop the animation loop
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current)
+          animationFrameRef.current = undefined
+        }
       }
 
       console.log('🎬 Calling audio.play()...')
@@ -326,7 +357,7 @@ export default function CloneChat({ userId }: CloneChatProps) {
 
       // Detect emotion from response
       const emotion = detectEmotion(response.data.text)
-      console.log('🎭 Detected emotion:', emotion)
+      console.log('🎭 Detected emotion:', emotion, 'from text:', response.data.text.substring(0, 100))
       setCurrentEmotion(emotion)
 
       setMessages(prev => [...prev, assistantMessage])
@@ -351,9 +382,25 @@ export default function CloneChat({ userId }: CloneChatProps) {
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && canInterrupt && !isLoading) {
       e.preventDefault()
       handleSend()
+    }
+  }
+
+  const stopAudio = () => {
+    console.log('⏹️ Manually stopping audio')
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    setIsPlaying(false)
+    setAudioData([])
+    setCurrentEmotion('neutral')
+    setCanInterrupt(true)
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = undefined
     }
   }
 
@@ -397,10 +444,10 @@ export default function CloneChat({ userId }: CloneChatProps) {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[80vh]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[85vh] max-h-[85vh]">
       {/* Clone Visualization */}
-      <div className="bg-dark-surface rounded-lg p-8 glow-border flex flex-col">
-        <div className="flex-1 relative min-h-[600px]">
+      <div className="bg-dark-surface rounded-lg p-8 glow-border flex flex-col h-full max-h-full overflow-hidden">
+        <div className="flex-1 relative min-h-0">
           <FaceWaveform3D
             audioData={audioData}
             isPlaying={isPlaying}
@@ -431,16 +478,16 @@ export default function CloneChat({ userId }: CloneChatProps) {
         </div>
 
         {/* Clone Info */}
-        <div className="mt-4 text-center text-sm text-gray-400">
+        <div className="mt-4 text-center text-sm text-gray-400 flex-shrink-0">
           <p>Your AI Clone • Voice & Visual</p>
           <p className="text-xs mt-1">Powered by Fish Audio, Claude & Chroma</p>
         </div>
       </div>
 
       {/* Chat Interface */}
-      <div className="bg-dark-surface rounded-lg glow-border flex flex-col">
+      <div className="bg-dark-surface rounded-lg glow-border flex flex-col h-full max-h-full overflow-hidden">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0 max-h-full">
           <AnimatePresence>
             {messages.map((message, idx) => (
               <motion.div
@@ -497,22 +544,41 @@ export default function CloneChat({ userId }: CloneChatProps) {
         </div>
 
         {/* Input */}
-        <div className="p-6 border-t border-dark-border">
+        <div className="p-6 border-t border-dark-border flex-shrink-0">
+          {/* Stop button (visible during playback) */}
+          {isPlaying && (
+            <div className="mb-3 flex justify-center">
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={stopAudio}
+                className="px-6 py-2 bg-red-600 border-2 border-red-500 text-white font-bold rounded-lg 
+                         hover:bg-red-700 transition-colors"
+              >
+                ⏹️ Stop Speaking
+              </motion.button>
+            </div>
+          )}
+          
           <div className="flex gap-3">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Give a scenario: 'Someone cuts you off in traffic. How would you respond?'"
+              placeholder={canInterrupt ? "Give a scenario: 'Someone cuts you off in traffic. How would you respond?'" : "⏳ Waiting for speech to finish..."}
               rows={2}
+              disabled={!canInterrupt}
               className="flex-1 bg-dark-bg border border-white/30 rounded-lg p-3 
-                       text-white resize-none focus:border-white focus:outline-none text-sm"
+                       text-white resize-none focus:border-white focus:outline-none text-sm
+                       disabled:opacity-40 disabled:cursor-not-allowed"
             />
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: canInterrupt ? 1.05 : 1 }}
+              whileTap={{ scale: canInterrupt ? 0.95 : 1 }}
               onClick={handleSend}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || !canInterrupt}
               className="px-6 bg-transparent border-2 border-white text-white font-bold rounded-lg 
                        hover:bg-white hover:text-black transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed"
@@ -523,7 +589,7 @@ export default function CloneChat({ userId }: CloneChatProps) {
             </motion.button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Press Enter to send • Shift+Enter for new line
+            {canInterrupt ? 'Press Enter to send • Shift+Enter for new line' : 'Click "Stop Speaking" to interrupt'}
           </p>
         </div>
       </div>

@@ -178,10 +178,28 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
         throw new Error('Invalid MediaPipe landmarks')
       }
       
-      console.log('   Sample landmark (point 10):', landmarks[10])
-      console.log('   Sample landmark (point 151):', landmarks[151])
-      
-      console.log('🎨 Step 2: Applying real proportions to 2.5D face template...')
+          console.log('   Sample landmark (point 10):', landmarks[10])
+          console.log('   Sample landmark (point 151):', landmarks[151])
+
+          console.log('💇 Step 2: Analyzing hair style with Claude Vision...')
+          
+          // Analyze hair from the front photo
+          const frontPhoto = validPhotos[0]
+          const formData = new FormData()
+          formData.append('image', frontPhoto)
+          
+          let hairDescription = null
+          try {
+            const hairResponse = await axios.post('/api/analyze-hair', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            hairDescription = hairResponse.data.hairStyle
+            console.log('   ✅ Hair style detected:', hairDescription)
+          } catch (error) {
+            console.warn('   ⚠️  Hair analysis failed, will use face-based generation')
+          }
+
+          console.log('🎨 Step 3: Applying real proportions to 2.5D face template...')
       
       // Fetch the mock face template
       const mockResponse = await fetch('/api/mock-face')
@@ -196,18 +214,18 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
       console.log(`   Landmark 133 (left eye):`, landmarks[133])
       console.log(`   Landmark 362 (right eye):`, landmarks[362])
       
-      // Apply MediaPipe measurements to mock face structure (using RAW landmarks!)
-      console.log('   🔄 Calling applyMediapipeToMockFace...')
-      
-      let personalizedFace
-      try {
-        personalizedFace = applyMediapipeToMockFace(landmarks, mockFaceContours)
-        console.log('   ✅ applyMediapipeToMockFace completed without errors')
-      } catch (error) {
-        console.error('   ❌ applyMediapipeToMockFace FAILED:', error)
-        console.error('   Error stack:', (error as Error).stack)
-        throw error
-      }
+          // Apply MediaPipe measurements to mock face structure (using RAW landmarks!)
+          console.log('   🔄 Calling applyMediapipeToMockFace...')
+
+          let personalizedFace
+          try {
+            personalizedFace = applyMediapipeToMockFace(landmarks, mockFaceContours, hairDescription)
+            console.log('   ✅ applyMediapipeToMockFace completed without errors')
+          } catch (error) {
+            console.error('   ❌ applyMediapipeToMockFace FAILED:', error)
+            console.error('   Error stack:', (error as Error).stack)
+            throw error
+          }
       
       console.log('📋 AFTER applying to mock:')
       console.log(`   Output: ${personalizedFace.length} contours`)

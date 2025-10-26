@@ -21,14 +21,17 @@ interface FaceData {
   contours: FaceContour[]
 }
 
-// Emotion to color mapping
+// Emotion to color mapping - full spectrum
 const EMOTION_COLORS: { [key: string]: string } = {
-  anger: '#ff4444',      // Red
-  concern: '#ff8800',    // Orange
-  joy: '#ffdd00',        // Yellow
-  sadness: '#4488ff',    // Blue
-  fear: '#8844ff',       // Purple
-  neutral: '#ffffff'     // White (default)
+  anger: '#ff3333',      // RED - rage, spazzy
+  joy: '#ffdd00',        // YELLOW - happiness, bouncy
+  sadness: '#4488ff',    // BLUE - fragile, low energy
+  concern: '#ff8800',    // ORANGE - cautious
+  fear: '#aa44ff',       // PURPLE - trembling
+  disgust: '#88ff44',    // GREEN - unsettled
+  surprise: '#00ffff',   // CYAN - shocked
+  love: '#ff69b4',       // PINK - warm
+  neutral: '#ffffff'     // WHITE - default
 }
 
 function WaveformContour({ 
@@ -96,43 +99,150 @@ function WaveformContour({
   }, [contour.points, contour.name])
   
   // Animate based on audio
+  // Store original positions for smooth reset
+  const originalPositionsRef = useRef<Float32Array | null>(null)
+  
   useFrame((state) => {
-    if (!meshRef.current || !geometryRef.current || !isPlaying || audioData.length === 0) return
+    if (!meshRef.current || !geometryRef.current) return
+    
+    const positions = geometryRef.current.attributes.position
+    
+    // Store original positions on first frame
+    if (!originalPositionsRef.current) {
+      originalPositionsRef.current = positions.array.slice() as Float32Array
+    }
     
     const time = state.clock.getElapsedTime()
     
-    // Calculate audio intensity
-    const avgAudio = audioData.reduce((a, b) => a + b, 0) / audioData.length
-    const intensity = Math.max(0.1, avgAudio * 2)
-    
-    // Animate tube radius to create waveform effect
-    const positions = geometryRef.current.attributes.position
-    const count = positions.count
-    
-    for (let i = 0; i < count; i++) {
-      const t = i / count
-      // Create wave effect along the contour
-      const audioIndex = Math.floor(t * audioData.length)
-      const audioValue = audioData[audioIndex] || 0
+    // Only apply wave effect when playing
+    if (isPlaying && audioData.length > 0) {
+      // Calculate audio intensity
+      const avgAudio = audioData.reduce((a, b) => a + b, 0) / audioData.length
+      const intensity = Math.max(0.2, avgAudio * 3)  // Higher baseline and multiplier
       
-      // Modulate position slightly for wave effect
-      const wave = Math.sin(t * 10 + time * 3) * audioValue * 0.02
-      const x = positions.getX(i)
-      const y = positions.getY(i)
-      const z = positions.getZ(i)
-      
-      const length = Math.sqrt(x * x + y * y + z * z)
-      if (length > 0) {
-        const scale = 1 + wave
-        positions.setXYZ(i, x * scale, y * scale, z * scale)
+      // Debug log periodically (every ~2 seconds)
+      const currentSecond = Math.floor(state.clock.elapsedTime)
+      if (currentSecond % 2 === 0 && state.clock.elapsedTime - currentSecond < 0.05) {
+        console.log(`🎵 Audio waveform active: avg=${avgAudio.toFixed(3)}, intensity=${intensity.toFixed(3)}, samples=${audioData.length}`)
       }
+      
+      // Animate tube radius to create waveform effect
+      const count = positions.count
+      
+      for (let i = 0; i < count; i++) {
+        const t = i / count
+        // Create wave effect along the contour
+        const audioIndex = Math.floor(t * audioData.length)
+        const audioValue = audioData[audioIndex] || 0
+        
+        // Get original position
+        const origX = originalPositionsRef.current![i * 3]
+        const origY = originalPositionsRef.current![i * 3 + 1]
+        const origZ = originalPositionsRef.current![i * 3 + 2]
+        
+        // Emotion-based wave effect with amplitude + fluctuation control
+        let amplitude = 0.08     // Base amplitude
+        let smoothness = 1.0     // 1.0 = smooth, 0.0 = spazzy
+        let waveFreq1 = 8
+        let waveFreq2 = 15
+        let timeSpeed = 2
+        
+        // Adjust based on emotion
+        if (emotion === 'anger') {
+          amplitude = 0.18       // HIGH amplitude
+          smoothness = 0.3       // VERY spazzy/fluctuating
+          waveFreq1 = 14         // Fast erratic movements
+          waveFreq2 = 22
+          timeSpeed = 5
+        } else if (emotion === 'joy') {
+          amplitude = 0.15       // HIGH amplitude
+          smoothness = 0.9       // SMOOTH, consistent bouncing
+          waveFreq1 = 5          // Gentle smooth waves
+          waveFreq2 = 8
+          timeSpeed = 2.5
+        } else if (emotion === 'sadness') {
+          amplitude = 0.06       // LOW amplitude (fragile but visible)
+          smoothness = 0.95      // Smooth and gentle
+          waveFreq1 = 3          // Very slow
+          waveFreq2 = 5
+          timeSpeed = 1.5        // Slightly faster so it's noticeable
+        } else if (emotion === 'fear') {
+          amplitude = 0.10       // Medium amplitude
+          smoothness = 0.4       // Jittery
+          waveFreq1 = 16
+          waveFreq2 = 24
+          timeSpeed = 4
+        } else if (emotion === 'concern') {
+          amplitude = 0.07       // Low-medium
+          smoothness = 0.7       // Moderately smooth
+          waveFreq1 = 7
+          waveFreq2 = 12
+          timeSpeed = 2.2
+        } else if (emotion === 'disgust') {
+          amplitude = 0.09
+          smoothness = 0.5       // Unsteady
+          waveFreq1 = 10
+          waveFreq2 = 16
+          timeSpeed = 3
+        } else if (emotion === 'surprise') {
+          amplitude = 0.12
+          smoothness = 0.2       // Very spiky
+          waveFreq1 = 18
+          waveFreq2 = 28
+          timeSpeed = 6
+        } else if (emotion === 'love') {
+          amplitude = 0.11       // Medium-high, warm
+          smoothness = 0.85      // Smooth and gentle
+          waveFreq1 = 4          // Slow, soothing
+          waveFreq2 = 7
+          timeSpeed = 2
+        }
+        
+        // Generate waves with smoothness control
+        const wave1 = Math.sin(t * waveFreq1 + time * timeSpeed) * audioValue * amplitude
+        const wave2 = Math.sin(t * waveFreq2 + time * (timeSpeed * 0.8)) * audioValue * (amplitude * 0.4)
+        
+        // Add random fluctuation based on smoothness (less smooth = more random)
+        const randomFactor = (1 - smoothness) * (Math.random() - 0.5) * 0.3
+        const wave = (wave1 + wave2) * (1 + randomFactor)
+        
+        const length = Math.sqrt(origX * origX + origY * origY + origZ * origZ)
+        if (length > 0) {
+          const scale = 1 + wave
+          positions.setXYZ(i, origX * scale, origY * scale, origZ * scale)
+        }
+      }
+      
+      // Keep opacity constant - only geometry warps, not visibility
+      const material = meshRef.current.material as THREE.MeshStandardMaterial
+      material.opacity = 0.9  // Consistent visibility
+    } else {
+      // When not playing, smoothly return to original positions
+      const count = positions.count
+      for (let i = 0; i < count; i++) {
+        const origX = originalPositionsRef.current![i * 3]
+        const origY = originalPositionsRef.current![i * 3 + 1]
+        const origZ = originalPositionsRef.current![i * 3 + 2]
+        
+        const currentX = positions.getX(i)
+        const currentY = positions.getY(i)
+        const currentZ = positions.getZ(i)
+        
+        // Smoothly lerp back to original position
+        positions.setXYZ(
+          i,
+          THREE.MathUtils.lerp(currentX, origX, 0.1),
+          THREE.MathUtils.lerp(currentY, origY, 0.1),
+          THREE.MathUtils.lerp(currentZ, origZ, 0.1)
+        )
+      }
+      
+      // Reset opacity
+      const material = meshRef.current.material as THREE.MeshStandardMaterial
+      material.opacity = THREE.MathUtils.lerp(material.opacity, 0.9, 0.05)
     }
     
     positions.needsUpdate = true
-    
-    // Pulse the glow
-    const material = meshRef.current.material as THREE.MeshBasicMaterial
-    material.opacity = 0.7 + Math.sin(time * 2) * 0.2 * intensity
   })
   
   if (!curve) return null
@@ -218,6 +328,45 @@ function Face3DModel({ audioData, isPlaying, emotion }: FaceWaveform3DProps) {
             const emoji = c.points.length >= 8 ? '✅' : c.points.length >= 5 ? '⚠️' : '❌'
             console.log(`   ${emoji} ${c.name}: ${c.points.length} points`)
           })
+          
+          // CRITICAL: Log actual coordinate values to verify personalization
+          const jawline = data.faceData.contours.find((c: FaceContour) => c.name === 'jawline')
+          const leftEye = data.faceData.contours.find((c: FaceContour) => c.name === 'left_eye_outline')
+          const hairFront = data.faceData.contours.find((c: FaceContour) => c.name === 'hair_front')
+          
+          if (jawline && jawline.points.length > 0) {
+            const jawWidth = Math.max(...jawline.points.map((p: [number, number, number]) => Math.abs(p[0]))) * 2
+            console.log(`%c🔍 CLIENT RENDER CHECK (CRITICAL):`, 'color: cyan; font-size: 16px; font-weight: bold')
+            console.log(`   Jawline width: ${jawWidth.toFixed(3)}`)
+            console.log(`   Sample jaw point:`, jawline.points[0])
+            console.log(`   ALL jaw points:`, jawline.points.slice(0, 5).map(p => `[${p[0].toFixed(3)}, ${p[1].toFixed(3)}, ${p[2].toFixed(3)}]`))
+            console.log(`   DEFAULT mock: width=0.700, point=[-0.350, -0.350, 0.040]`)
+            
+            // Check if this is the EXACT default mock face
+            const isExactDefault = Math.abs(jawWidth - 0.700) < 0.001 &&
+                                  Math.abs(jawline.points[0][0] - (-0.35)) < 0.001 &&
+                                  Math.abs(jawline.points[0][1] - (-0.35)) < 0.001
+            
+            if (isExactDefault) {
+              console.log('%c❌❌❌ RENDERING DEFAULT MOCK FACE!', 'color: red; font-size: 18px; font-weight: bold; background: yellow; padding: 5px')
+              console.log('%c   This means personalized data did NOT load!', 'color: red; font-size: 14px; font-weight: bold')
+            } else if (Math.abs(jawWidth - 0.700) < 0.05) {
+              console.log(`%c⚠️ VERY CLOSE to default (width ${jawWidth.toFixed(3)})`, 'color: orange; font-size: 14px; font-weight: bold')
+              console.log(`   Might be using default OR barely personalized`)
+            } else {
+              console.log(`%c✅✅✅ RENDERING PERSONALIZED FACE!`, 'color: lime; font-size: 18px; font-weight: bold; background: darkgreen; padding: 5px')
+              console.log(`%c   Width: ${jawWidth.toFixed(3)} (different from 0.700)`, 'color: lime; font-size: 14px')
+            }
+          }
+          
+          if (leftEye && leftEye.points.length > 0) {
+            console.log(`   Left eye position:`, leftEye.points[0])
+          }
+          
+          if (hairFront && hairFront.points.length > 0) {
+            const topHairY = Math.max(...hairFront.points.map((p: [number, number, number]) => p[1]))
+            console.log(`   Top hair Y: ${topHairY.toFixed(3)}`)
+          }
         }
         
         setFaceData(data.faceData)
@@ -332,13 +481,13 @@ function Face3DModel({ audioData, isPlaying, emotion }: FaceWaveform3DProps) {
 
 export default function FaceWaveform3D({ audioData, isPlaying, emotion }: FaceWaveform3DProps) {
   const [isLoading, setIsLoading] = useState(true)
-  
+
   useEffect(() => {
-    // Simple timeout for loading state (don't poll API repeatedly)
+    // Quickly hide loading overlay once face starts rendering
     const timeout = setTimeout(() => {
       setIsLoading(false)
-    }, 8000) // 8 seconds max loading
-    
+    }, 1500) // 1.5 seconds - just long enough for initial load
+
     return () => clearTimeout(timeout)
   }, [])
   
@@ -355,7 +504,7 @@ export default function FaceWaveform3D({ audioData, isPlaying, emotion }: FaceWa
       )}
       
       <Canvas
-        camera={{ position: [0, 0, 3.2], fov: 50 }}
+        camera={{ position: [0, 0, 4.5], fov: 60 }}
         gl={{ alpha: true, antialias: true }}
         style={{ opacity: isLoading ? 0.3 : 1, transition: 'opacity 0.5s' }}
       >
