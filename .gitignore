@@ -50,3 +50,7 @@ next-env.d.ts
 *.swo
 *~
 
+# Test scripts with hardcoded API keys (NEVER commit these!)
+test_fish*.sh
+scripts/test_*.sh
+
