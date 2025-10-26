@@ -39,6 +39,8 @@ dependencies {
     include("com.googlecode.soundlibs:mp3spi:1.9.5.4")
     implementation("com.googlecode.soundlibs:jlayer:1.0.1.4")
     include("com.googlecode.soundlibs:jlayer:1.0.1.4")
+    implementation("com.googlecode.soundlibs:tritonus-share:0.3.7.4")
+    include("com.googlecode.soundlibs:tritonus-share:0.3.7.4")
 }
 
 tasks {
