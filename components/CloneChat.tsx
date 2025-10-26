@@ -362,6 +362,15 @@ export default function CloneChat({ userId }: CloneChatProps) {
         setCurrentEmotion('neutral')
         setMessages(prev => [...prev, assistantMessage])
         setIsLoading(false)
+        
+        // Use browser TTS for admin bypass
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(mockResponse)
+          utterance.rate = 1.0
+          utterance.pitch = 1.0
+          utterance.volume = 1.0
+          window.speechSynthesis.speak(utterance)
+        }
         return
       }
       
@@ -400,7 +409,15 @@ export default function CloneChat({ userId }: CloneChatProps) {
         console.log('🔊 Playing audio:', response.data.audioUrl)
         await playAudio(response.data.audioUrl)
       } else {
-        console.warn('⚠️ No audio URL in response')
+        console.warn('⚠️ No audio URL in response - using browser TTS fallback')
+        // Fallback to browser text-to-speech if no audio URL
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(response.data.text)
+          utterance.rate = 1.0
+          utterance.pitch = 1.0
+          utterance.volume = 1.0
+          window.speechSynthesis.speak(utterance)
+        }
       }
     } catch (error: any) {
       console.error('❌ Error sending message:', error)
