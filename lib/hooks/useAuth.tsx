@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     const displayName = email // In signup form, we swapped these
     
     // Create email from username if not provided
-    const userEmail = displayName && displayName.includes('@') ? displayName : `${username}@ghostjournal.local`
+    const userEmail = displayName && displayName.includes('@') ? displayName : `${username}@replik.local`
     
     const { data, error } = await supabase.auth.signUp({
       email: userEmail,
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const login = async (emailOrUsername: string, password: string) => {
     // Determine if input is email or username
     const isEmail = emailOrUsername.includes('@')
-    const loginEmail = isEmail ? emailOrUsername : `${emailOrUsername}@ghostjournal.local`
+    const loginEmail = isEmail ? emailOrUsername : `${emailOrUsername}@replik.local`
     
     const { data, error} = await supabase.auth.signInWithPassword({
       email: loginEmail,

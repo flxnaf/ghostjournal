@@ -254,10 +254,10 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
             className="text-center mb-12"
           >
             <h1 className="text-6xl font-bold mb-4 glow-text">
-              {browsingUserId && browsingUserId !== user.id ? 'Chat with Clone' : 'GhostJournal'}
+              {browsingUserId && browsingUserId !== user.id ? 'Chat with Clone' : 'Replik'}
             </h1>
             <p className="text-white text-xl">
-              {browsingUserId && browsingUserId !== user.id ? 'Talking to another AI clone' : 'Your AI Clone'}
+              {browsingUserId && browsingUserId !== user.id ? 'Talking to another AI clone' : 'Your Digital Clone'}
             </p>
           </motion.div>
 
