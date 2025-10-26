@@ -29,6 +29,11 @@ All conversations and contexts are stored in ChromaDB, enabling your clone to re
 ### 🤖 Autonomous Agent (Optional)
 Deploy your clone to Fetch.ai's Agentverse where it can operate independently, interact with other agents, and persist beyond your session.
 
+### 🎮 Minecraft Integration (NEW!)
+Bring your digital twins into Minecraft with full voice support! Import twins from the web app, spawn them as NPCs, and chat with them in-game. Supports both command-based (MVP) and GUI-based (Advanced) modes.
+
+**See [MINECRAFT_SETUP.md](./MINECRAFT_SETUP.md) for full guide.**
+
 ---
 
 ## 🛠️ Tech Stack
