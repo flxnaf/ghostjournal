@@ -237,14 +237,15 @@ export default function LandingPage() {
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">Display Name (optional)</label>
+                      <label className="block text-sm font-medium mb-2">Email *</label>
                       <input
-                        type="text"
+                        type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        required
                         className="w-full px-4 py-3 bg-dark-bg border border-white/20 rounded-lg
                                  text-white focus:border-white focus:outline-none"
-                        placeholder="Your Name"
+                        placeholder="your@email.com"
                       />
                     </div>
                   </>
@@ -252,15 +253,15 @@ export default function LandingPage() {
 
                 {!isSignup && (
                   <div>
-                    <label className="block text-sm font-medium mb-2">Username or Email</label>
+                    <label className="block text-sm font-medium mb-2">Email</label>
                     <input
-                      type="text"
+                      type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       className="w-full px-4 py-3 bg-dark-bg border border-white/20 rounded-lg
                                text-white focus:border-white focus:outline-none"
-                      placeholder="username or email@example.com"
+                      placeholder="your@email.com"
                     />
                   </div>
                 )}
