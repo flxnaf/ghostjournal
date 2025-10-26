@@ -36,10 +36,22 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User found, audio URL:', user.audioUrl)
 
-    // Read audio file
-    const audioPath = join(process.cwd(), 'public', user.audioUrl)
-    const audioBuffer = await readFile(audioPath)
-    console.log('📁 Audio file size:', audioBuffer.length, 'bytes')
+    // Read audio file (handle both local paths and remote URLs)
+    let audioBuffer: Buffer
+    
+    if (user.audioUrl.startsWith('http://') || user.audioUrl.startsWith('https://')) {
+      // Remote URL (Supabase Storage) - download it
+      console.log('🌐 Downloading audio from remote URL...')
+      const response = await axios.get(user.audioUrl, { responseType: 'arraybuffer' })
+      audioBuffer = Buffer.from(response.data)
+      console.log('✅ Downloaded audio, size:', audioBuffer.length, 'bytes')
+    } else {
+      // Local file path
+      console.log('📁 Reading audio from local filesystem...')
+      const audioPath = join(process.cwd(), 'public', user.audioUrl)
+      audioBuffer = await readFile(audioPath)
+      console.log('✅ Read audio file, size:', audioBuffer.length, 'bytes')
+    }
 
     // Fish Audio API endpoint
     const FISH_API_KEY = process.env.FISH_AUDIO_API_KEY
