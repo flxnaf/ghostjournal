@@ -32,6 +32,13 @@ model User {
   name          String?
   email         String?
   
+  // Consent (for data usage)
+  consentAudio        Boolean @default(false)  // Consent to save audio recordings
+  consentChat         Boolean @default(false)  // Consent to save chat history
+  consentContext      Boolean @default(false)  // Consent to save stories/context
+  consentFaceData     Boolean @default(false)  // Consent to save face photos/3D model
+  consentTimestamp    DateTime?               // When consent was given
+  
   // Relations
   memories      Memory[]
   conversations Conversation[]
