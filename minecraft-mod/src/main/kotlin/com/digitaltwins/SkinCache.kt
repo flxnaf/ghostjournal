@@ -21,10 +21,10 @@ object SkinCache {
      * Returns Steve skin as fallback
      */
     fun getSkin(skinUrl: String?, entityName: String): Identifier {
-        // No skin URL - use Steve
+        // No skin URL - use Steve (1.20.1 path)
         if (skinUrl.isNullOrEmpty()) {
             println("🎨 No skin URL provided, using Steve")
-            return Identifier("minecraft", "textures/entity/steve.png")
+            return Identifier("minecraft", "textures/entity/player/wide/steve.png")
         }
 
         // Check cache
@@ -53,14 +53,14 @@ object SkinCache {
                 println("❌ Failed to download skin: HTTP ${response.code}")
                 println("   Response message: ${response.message}")
                 println("   ⚠️ Check your internet connection!")
-                return Identifier("minecraft", "textures/entity/steve.png")
+                return Identifier("minecraft", "textures/entity/player/wide/steve.png")
             }
 
             // Load image
             val imageBytes = response.body?.bytes()
             if (imageBytes == null || imageBytes.isEmpty()) {
                 println("❌ No image data received")
-                return Identifier("minecraft", "textures/entity/steve.png")
+                return Identifier("minecraft", "textures/entity/player/wide/steve.png")
             }
 
             println("✅ Downloaded ${imageBytes.size} bytes")
@@ -89,15 +89,15 @@ object SkinCache {
         } catch (e: java.net.UnknownHostException) {
             println("❌ No internet connection - cannot download skin")
             println("   Entity will use Steve skin")
-            return Identifier("minecraft", "textures/entity/steve.png")
+            return Identifier("minecraft", "textures/entity/player/wide/steve.png")
         } catch (e: java.net.SocketTimeoutException) {
             println("❌ Connection timeout - check your internet")
-            return Identifier("minecraft", "textures/entity/steve.png")
+            return Identifier("minecraft", "textures/entity/player/wide/steve.png")
         } catch (e: Exception) {
             println("❌ Failed to download skin: ${e.message}")
             println("   Exception type: ${e.javaClass.simpleName}")
             e.printStackTrace()
-            return Identifier("minecraft", "textures/entity/steve.png")
+            return Identifier("minecraft", "textures/entity/player/wide/steve.png")
         }
     }
 

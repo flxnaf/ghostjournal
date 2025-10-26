@@ -3,38 +3,41 @@ package com.digitaltwins.advanced.client
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import net.minecraft.client.MinecraftClient
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.BufferedInputStream
-import java.io.ByteArrayInputStream
-import javax.sound.sampled.AudioInputStream
-import javax.sound.sampled.AudioSystem
-import javax.sound.sampled.Clip
-import javax.sound.sampled.LineEvent
+import java.io.File
+import java.nio.file.Files
 
 /**
  * Audio player for Twin voice responses
- * Downloads and plays MP3 files from URLs
+ * Downloads MP3 and plays using system audio player (afplay on Mac)
  */
 object TwinAudioPlayer {
     private val client = OkHttpClient()
-    private var currentClip: Clip? = null
+    private var currentProcess: Process? = null
+    private val tempDir = Files.createTempDirectory("twin_audio").toFile().apply { 
+        deleteOnExit() 
+    }
     
     /**
      * Play audio from a URL
-     * Downloads the file and plays it using Java Sound API
+     * Downloads the file and plays it using system audio player
      */
     fun playAudioFromUrl(url: String) {
-        println("🔊 TwinAudioPlayer.playAudioFromUrl()")
+        println("═══════════════════════════════════════════")
+        println("🔊 TWIN AUDIO PLAYER")
+        println("═══════════════════════════════════════════")
         println("   URL: $url")
+        println("   Temp dir: ${tempDir.absolutePath}")
         
         // Stop any currently playing audio
         stopCurrentAudio()
         
-        // Play on background thread
+        // Download and play on background thread
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                println("📥 Downloading audio from URL...")
+                println("📥 Downloading audio...")
                 
                 // Download audio file
                 val request = Request.Builder()
@@ -44,8 +47,7 @@ object TwinAudioPlayer {
                 val response = client.newCall(request).execute()
                 
                 if (!response.isSuccessful) {
-                    println("❌ Failed to download audio: HTTP ${response.code}")
-                    println("   Response: ${response.message}")
+                    println("❌ HTTP Error: ${response.code} - ${response.message}")
                     return@launch
                 }
                 
@@ -55,81 +57,71 @@ object TwinAudioPlayer {
                     return@launch
                 }
                 
-                println("✅ Downloaded ${audioBytes.size} bytes")
-                println("🎵 Attempting to play audio...")
+                println("✅ Downloaded ${audioBytes.size} bytes (${audioBytes.size / 1024} KB)")
                 
-                // Try to play using Java Sound API
-                try {
-                    val inputStream = BufferedInputStream(ByteArrayInputStream(audioBytes))
-                    val audioInputStream = AudioSystem.getAudioInputStream(inputStream)
-                    
-                    val clip = AudioSystem.getClip()
-                    currentClip = clip
-                    
-                    // Add listener to clean up when done
-                    clip.addLineListener { event ->
-                        if (event.type == LineEvent.Type.STOP) {
-                            clip.close()
-                            if (currentClip == clip) {
-                                currentClip = null
-                            }
-                        }
-                    }
-                    
-                    clip.open(audioInputStream)
-                    clip.start()
-                    
-                    println("✅ Audio playback started!")
-                    println("   Format: ${audioInputStream.format}")
-                    println("   Duration: ${clip.microsecondLength / 1_000_000.0} seconds")
-                    
-                } catch (e: Exception) {
-                    println("❌ Failed to play audio with Java Sound API: ${e.message}")
-                    println("   This might be an MP3 format issue - Java Sound needs plugins for MP3")
-                    e.printStackTrace()
-                    
-                    // Try alternate approach: save to temp file and use system player
-                    trySystemPlayer(audioBytes)
-                }
+                // Save to temp file
+                val tempFile = File(tempDir, "response_${System.currentTimeMillis()}.mp3")
+                tempFile.writeBytes(audioBytes)
+                println("💾 Saved to: ${tempFile.absolutePath}")
+                
+                // Play using system audio player
+                playSystemAudio(tempFile)
                 
             } catch (e: Exception) {
-                println("❌ Failed to download/play audio: ${e.message}")
+                println("❌ Download/playback error: ${e.message}")
                 e.printStackTrace()
             }
         }
     }
     
     /**
-     * Try to play audio using system's default player
+     * Play audio file using system player
      */
-    private fun trySystemPlayer(audioBytes: ByteArray) {
+    private fun playSystemAudio(audioFile: File) {
         try {
-            println("🔄 Trying system audio player...")
-            
-            // Create temp file
-            val tempFile = kotlin.io.path.createTempFile("twin_audio", ".mp3").toFile()
-            tempFile.writeBytes(audioBytes)
-            tempFile.deleteOnExit()
-            
-            println("   Saved to: ${tempFile.absolutePath}")
-            
-            // Try to play using system command
             val os = System.getProperty("os.name").lowercase()
+            println("🖥️ Operating System: $os")
+            
             val command = when {
-                os.contains("mac") -> arrayOf("afplay", tempFile.absolutePath)
-                os.contains("win") -> arrayOf("cmd", "/c", "start", tempFile.absolutePath)
-                os.contains("nix") || os.contains("nux") -> arrayOf("mpg123", tempFile.absolutePath)
+                os.contains("mac") -> {
+                    println("🍎 Using macOS 'afplay'")
+                    arrayOf("afplay", audioFile.absolutePath)
+                }
+                os.contains("win") -> {
+                    println("🪟 Using Windows Media Player")
+                    arrayOf("cmd", "/c", "start", "/min", audioFile.absolutePath)
+                }
+                os.contains("nix") || os.contains("nux") -> {
+                    println("🐧 Using Linux 'mpg123'")
+                    arrayOf("mpg123", "-q", audioFile.absolutePath)
+                }
                 else -> {
-                    println("⚠️ Unknown OS, can't auto-play")
+                    println("❌ Unknown OS - cannot play audio")
                     return
                 }
             }
             
-            val process = ProcessBuilder(*command).start()
-            println("✅ Started system audio player")
+            println("🎵 Executing: ${command.joinToString(" ")}")
+            currentProcess = ProcessBuilder(*command)
+                .redirectError(ProcessBuilder.Redirect.INHERIT)
+                .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                .start()
+            
+            println("✅ Audio playback started!")
+            
+            // Clean up after playback finishes
+            Thread {
+                try {
+                    currentProcess?.waitFor()
+                    audioFile.delete()
+                    println("🗑️ Cleaned up temp audio file")
+                } catch (e: Exception) {
+                    println("⚠️ Cleanup error: ${e.message}")
+                }
+            }.start()
             
         } catch (e: Exception) {
-            println("❌ System player failed: ${e.message}")
+            println("❌ System player error: ${e.message}")
             e.printStackTrace()
         }
     }
@@ -138,13 +130,12 @@ object TwinAudioPlayer {
      * Stop currently playing audio
      */
     fun stopCurrentAudio() {
-        currentClip?.let { clip ->
-            if (clip.isRunning) {
-                clip.stop()
+        currentProcess?.let { process ->
+            if (process.isAlive) {
+                process.destroy()
+                println("⏹️ Stopped current audio")
             }
-            clip.close()
-            currentClip = null
-            println("⏹️ Stopped current audio")
+            currentProcess = null
         }
     }
 }

@@ -152,12 +152,43 @@ class TwinChatScreen(
         // Wrap all messages and calculate total lines
         val wrappedMessages = mutableListOf<String>()
         for (message in chatHistory) {
-            val wrapped = wrapText(message, maxWidth)
-            wrappedMessages.addAll(wrapped)
+            // Wrap each message to fit screen width
+            val textWidth = textRenderer.getWidth(message.replace(Regex("§[0-9a-fklmnor]"), ""))
+            
+            if (textWidth > maxWidth) {
+                // Message is too long, wrap it
+                val words = message.split(" ")
+                var currentLine = ""
+                var currentColor = ""
+                
+                for (word in words) {
+                    // Track color codes
+                    Regex("(§[0-9a-fklmnor])").findAll(word).forEach { match ->
+                        currentColor = match.value
+                    }
+                    
+                    val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+                    val visibleWidth = textRenderer.getWidth(testLine.replace(Regex("§[0-9a-fklmnor]"), ""))
+                    
+                    if (visibleWidth > maxWidth && currentLine.isNotEmpty()) {
+                        wrappedMessages.add(currentLine)
+                        currentLine = currentColor + word.replace(Regex("§[0-9a-fklmnor]"), "")
+                    } else {
+                        currentLine = testLine
+                    }
+                }
+                
+                if (currentLine.isNotEmpty()) {
+                    wrappedMessages.add(currentLine)
+                }
+            } else {
+                // Message fits, add as-is
+                wrappedMessages.add(message)
+            }
         }
         
         // Show only lines that fit on screen (from bottom up)
-        val linesPerScreen = (maxHeight - 50) / 12
+        val linesPerScreen = maxOf(1, (maxHeight - 50) / 12)
         val visibleLines = wrappedMessages.takeLast(linesPerScreen)
         
         for (line in visibleLines) {
