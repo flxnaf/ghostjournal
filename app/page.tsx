@@ -189,8 +189,15 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
 
       {/* Block UI until consent is given */}
       {!consentGiven && !showConsent && (
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
           <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white"></div>
+          <button
+            onClick={logout}
+            className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                     hover:bg-white hover:text-black transition-colors"
+          >
+            Logout
+          </button>
         </div>
       )}
 
