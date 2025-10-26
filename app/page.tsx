@@ -304,7 +304,26 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       {view === 'dashboard' && (
         <Dashboard
           user={user}
-          onCreateCharacter={() => setView('character')}
+          onCreateCharacter={async () => {
+            // Check if user already has audio - if so, skip to CloneTabs
+            try {
+              const userDataResponse = await axios.get(`/api/personality?userId=${user.id}`)
+              const userData = userDataResponse.data
+              
+              if (userData.audioUrl) {
+                console.log('✅ User has audio - going to CloneTabs')
+                setUserId(user.id)
+                setStep('chat')
+              } else {
+                console.log('⚠️ User has no audio - starting at record step')
+                setStep('record')
+              }
+            } catch (err) {
+              console.log('⚠️ Could not check audio, starting at record step')
+              setStep('record')
+            }
+            setView('character')
+          }}
           onBrowseClones={() => setView('browse')}
           onLogout={logout}
           onReRecordVoice={() => {
