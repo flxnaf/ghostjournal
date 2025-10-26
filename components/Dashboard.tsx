@@ -3,17 +3,22 @@
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 import axios from 'axios'
+import { User, Users, Trash2, Globe, Lock } from 'lucide-react'
 
 interface DashboardProps {
   user: any
   onCreateCharacter: () => void
   onBrowseClones: () => void
   onLogout: () => void
+  onReRecordVoice?: () => void
 }
 
-export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout }: DashboardProps) {
+export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout, onReRecordVoice }: DashboardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isPublic, setIsPublic] = useState(user.isPublic || false)
+  const [isTogglingPublic, setIsTogglingPublic] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
@@ -27,6 +32,37 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
       setIsDeleting(false)
     }
   }
+
+  const handleTogglePublic = async () => {
+    setIsTogglingPublic(true)
+    try {
+      const newStatus = !isPublic
+      await axios.post('/api/toggle-public', { 
+        userId: user.id, 
+        isPublic: newStatus 
+      })
+      setIsPublic(newStatus)
+    } catch (error) {
+      console.error('Toggle public error:', error)
+      alert('Failed to update visibility. Please try again.')
+    } finally {
+      setIsTogglingPublic(false)
+    }
+  }
+
+  const handleRefreshPersonality = async () => {
+    setIsRefreshing(true)
+    try {
+      await axios.post('/api/refresh-personality', { userId: user.id })
+      alert('✅ Clone personality refreshed! Old data cleared.')
+    } catch (error) {
+      console.error('Refresh error:', error)
+      alert('Failed to refresh personality. Please try again.')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <div className="max-w-5xl w-full">
@@ -54,7 +90,9 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
             className="bg-dark-surface rounded-2xl p-8 glow-border cursor-pointer
                      hover:border-white/50 transition-all"
           >
-            <div className="text-6xl mb-4">🎭</div>
+            <div className="mb-4">
+              <User className="w-16 h-16 text-white" />
+            </div>
             <h2 className="text-3xl font-bold text-white mb-3">
               My Clone Model
             </h2>
@@ -77,7 +115,9 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
             className="bg-dark-surface rounded-2xl p-8 glow-border cursor-pointer
                      hover:border-white/50 transition-all"
           >
-            <div className="text-6xl mb-4">🔍</div>
+            <div className="mb-4">
+              <Users className="w-16 h-16 text-white" />
+            </div>
             <h2 className="text-3xl font-bold text-white mb-3">
               Browse Clone Models
             </h2>
@@ -91,12 +131,80 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
           </motion.div>
         </div>
 
-        {/* Delete Account Button */}
+        {/* Public/Private Toggle */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8 max-w-2xl mx-auto bg-dark-surface rounded-xl p-6 border border-white/20"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+                {isPublic ? (
+                  <>
+                    <Globe className="w-5 h-5" />
+                    Public Clone
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-5 h-5" />
+                    Private Clone
+                  </>
+                )}
+              </h3>
+              <p className="text-sm text-gray-400">
+                {isPublic 
+                  ? 'Your clone is searchable. Others can find and chat with it.'
+                  : 'Your clone is private. Only you can access it.'}
+              </p>
+            </div>
+            <button
+              onClick={handleTogglePublic}
+              disabled={isTogglingPublic}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                isPublic
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
+              {isTogglingPublic ? 'Updating...' : (isPublic ? 'Make Private' : 'Make Public')}
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Action Buttons */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-12 text-center"
+          className="mt-8 text-center space-y-3"
+        >
+          {onReRecordVoice && (
+            <button
+              onClick={onReRecordVoice}
+              className="px-6 py-2 text-sm text-blue-400 border border-blue-400/30 rounded-lg
+                       hover:bg-blue-400/10 transition-colors mr-3"
+            >
+              Re-record Voice
+            </button>
+          )}
+          <button
+            onClick={handleRefreshPersonality}
+            disabled={isRefreshing}
+            className="px-6 py-2 text-sm text-green-400 border border-green-400/30 rounded-lg
+                     hover:bg-green-400/10 transition-colors disabled:opacity-50"
+          >
+            {isRefreshing ? 'Refreshing...' : '🔄 Refresh Clone Data'}
+          </button>
+        </motion.div>
+
+        {/* Delete Account Button */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-4 text-center"
         >
           <button
             onClick={() => setShowDeleteConfirm(true)}

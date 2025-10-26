@@ -32,6 +32,9 @@ model User {
   // Metadata
   name          String?
   email         String?
+  username      String?  @unique
+  bio           String?
+  isPublic      Boolean  @default(false)  // Whether clone appears in browse/search
   
   // Consent (for data usage)
   consentAudio        Boolean @default(false)  // Consent to save audio recordings

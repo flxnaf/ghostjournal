@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Get user data (or use admin bypass)
     console.log('🔍 Looking up user:', userId)
+    console.log('   Full user ID:', userId)
     
     // Admin bypass: Allow testing without database
     const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
@@ -50,12 +51,25 @@ export async function POST(request: NextRequest) {
         name: 'Admin User'
       }
     } else {
-      user = await prisma.user.findUnique({ where: { id: userId } })
+      user = await prisma.user.findUnique({ 
+        where: { id: userId },
+        select: {
+          id: true,
+          voiceModelId: true,
+          personalityData: true,
+          name: true,
+          email: true,
+          username: true
+        }
+      })
       if (!user) {
         console.error('❌ User not found:', userId)
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
       console.log('✅ User found')
+      console.log('   User name:', user.name || user.username)
+      console.log('   User email:', user.email)
+      console.log('🎤 User voiceModelId:', user.voiceModelId || 'NULL (will use default)')
     }
 
     // Check for keyword commands to update context
@@ -101,9 +115,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get personality data
+    console.log('🎭 Loading personality data...')
+    console.log('   Raw personalityData:', user.personalityData ? 'Present' : 'NULL')
     const personality = user.personalityData 
       ? JSON.parse(user.personalityData) 
       : null
+    console.log('   Parsed personality:', personality ? 'Present' : 'NULL')
+    if (personality) {
+      console.log('   Personality keys:', Object.keys(personality))
+      console.log('   Personality sample:', JSON.stringify(personality).substring(0, 200))
+    }
 
     // Query relevant memories with timeout
     console.log('🧠 Querying memories...')
@@ -174,6 +195,11 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
 
     // Generate response with Claude
     console.log('🤖 Generating Claude response...')
+    console.log('   Personality prompt length:', personalityPrompt.length)
+    console.log('   Using personality:', personality ? 'YES' : 'NO (default prompt)')
+    console.log('   Memory context length:', memoryContext.length)
+    console.log('   Has memories:', memories.length > 0)
+    
     const responseText = await generateResponse(
       message,
       conversationHistory,
@@ -484,14 +510,14 @@ async function generateVoice(
     const user = await prisma.user.findUnique({ where: { id: userId } })
     
     // Determine which reference to use
-    let referenceId = '802e3bc2b27e49c2995d23ef70e6ac89' // Default voice
+    let referenceId = 'af1ddb5dc0e644ebb16b58ed466e27c6' // Default neutral English voice
     
     if (voiceModelId && !voiceModelId.startsWith('mock_')) {
       // Use the trained S1 model (HIGH QUALITY)
       referenceId = voiceModelId
       console.log('✅ Using trained S1 voice model:', referenceId.substring(0, 20))
     } else {
-      console.log('⚠️ Using default voice (no trained model yet)')
+      console.log('⚠️ Using default neutral voice (no trained model yet)')
     }
     
     // Create TTS request with trained model

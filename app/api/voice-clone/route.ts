@@ -36,10 +36,22 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ User found, audio URL:', user.audioUrl)
 
-    // Read audio file
-    const audioPath = join(process.cwd(), 'public', user.audioUrl)
-    const audioBuffer = await readFile(audioPath)
-    console.log('📁 Audio file size:', audioBuffer.length, 'bytes')
+    // Read audio file (handle both local paths and remote URLs)
+    let audioBuffer: Buffer
+    
+    if (user.audioUrl.startsWith('http://') || user.audioUrl.startsWith('https://')) {
+      // Remote URL (Supabase Storage) - download it
+      console.log('🌐 Downloading audio from remote URL...')
+      const response = await axios.get(user.audioUrl, { responseType: 'arraybuffer' })
+      audioBuffer = Buffer.from(response.data)
+      console.log('✅ Downloaded audio, size:', audioBuffer.length, 'bytes')
+    } else {
+      // Local file path
+      console.log('📁 Reading audio from local filesystem...')
+      const audioPath = join(process.cwd(), 'public', user.audioUrl)
+      audioBuffer = await readFile(audioPath)
+      console.log('✅ Read audio file, size:', audioBuffer.length, 'bytes')
+    }
 
     // Fish Audio API endpoint
     const FISH_API_KEY = process.env.FISH_AUDIO_API_KEY
@@ -118,6 +130,25 @@ export async function POST(request: NextRequest) {
       })
       
       console.log('💾 Voice model ID saved to database:', modelId)
+
+      // PRIVACY: Delete audio file after successful training
+      // The voice model is now stored by Fish Audio, we don't need the raw audio anymore
+      console.log('🗑️ Deleting original audio file for privacy...')
+      try {
+        const { deleteAudio } = await import('@/lib/storage')
+        await deleteAudio(userId)
+        
+        // Clear audioUrl from database
+        await prisma.user.update({
+          where: { id: userId },
+          data: { audioUrl: null }
+        })
+        
+        console.log('✅ Audio file deleted for privacy')
+      } catch (deleteError) {
+        console.warn('⚠️ Could not delete audio file:', deleteError)
+        // Don't fail the request if deletion fails
+      }
 
       return NextResponse.json({ 
         modelId: modelId, 

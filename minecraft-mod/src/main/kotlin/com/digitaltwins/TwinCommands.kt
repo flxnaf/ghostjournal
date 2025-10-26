@@ -177,6 +177,7 @@ object TwinCommands {
 
     /**
      * Send a message to a twin and play voice response
+     * Send a message to a twin
      */
     private fun chatWithTwin(context: CommandContext<ServerCommandSource>, name: String, message: String) {
         val player = context.source.player ?: return
