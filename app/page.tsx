@@ -71,15 +71,22 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
     }
     
     const checkConsent = async () => {
+      console.log('🔍 Checking consent for user:', user.id)
       try {
         const response = await axios.get(`/api/user-consent?userId=${user.id}`)
+        console.log('✅ Consent check response:', response.data)
         if (response.data.hasConsent) {
+          console.log('✅ User has consent, setting consentGiven=true')
           setConsentGiven(true)
         } else {
+          console.log('⚠️ User has no consent, showing consent dialog')
           setShowConsent(true)
         }
-      } catch (error) {
+      } catch (error: any) {
+        console.error('❌ Consent check error:', error)
+        console.error('   Error response:', error.response?.data)
         // If error, show consent dialog to be safe
+        console.log('⚠️ Showing consent dialog due to error')
         setShowConsent(true)
       }
     }
