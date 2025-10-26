@@ -573,7 +573,7 @@ async function generateVoice(
 
     if (trainedVoiceId) {
       console.log('✅ Using trained voice model for TTS:', trainedVoiceId.substring(0, 20))
-      formData.append('voice_id', trainedVoiceId)
+      formData.append('reference_id', trainedVoiceId)  // FIXED: Use reference_id for trained models
     } else {
       console.log('⚠️ No trained voice model detected, attempting on-the-fly cloning')
 
