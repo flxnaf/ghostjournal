@@ -19,6 +19,12 @@
         "adapter": "kotlin",
         "value": "com.digitaltwins.DigitalTwinsMod"
       }
+    ],
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "com.digitaltwins.DigitalTwinsModClient"
+      }
     ]
   },
   "mixins": [],
