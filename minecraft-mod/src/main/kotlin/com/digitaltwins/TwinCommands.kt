@@ -105,13 +105,18 @@ object TwinCommands {
             // Full URL provided
             urlOrUsername.startsWith("http") -> urlOrUsername
 
+            // UUID format (8-4-4-4-12 with hyphens) - matches standard UUID pattern
+            urlOrUsername.matches(Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE)) -> {
+                "https://replik.tech/api/minecraft/export/$urlOrUsername"
+            }
+
             // Username with @ prefix
             urlOrUsername.startsWith("@") -> {
                 val username = urlOrUsername.substring(1)
                 "https://replik.tech/api/minecraft/export/username/$username"
             }
 
-            // Plain username (assume it's a username, not a UUID)
+            // Plain username (not a UUID, no slashes or dots)
             !urlOrUsername.contains("/") && !urlOrUsername.contains(".") -> {
                 "https://replik.tech/api/minecraft/export/username/$urlOrUsername"
             }
@@ -200,39 +205,65 @@ object TwinCommands {
             return
         }
 
-        // Create and spawn TwinEntity
-        val twinEntity = ModEntities.TWIN_ENTITY.create(world)
-        if (twinEntity == null) {
-            player.sendMessage(
-                Text.literal("§cFailed to create twin entity"),
-                false
-            )
-            return
+        val pos = player.blockPos
+
+        // Try to spawn as TwinEntity (Advanced Edition with AI and skins)
+        val twinEntity = try {
+            ModEntities.TWIN_ENTITY.create(world)
+        } catch (e: Exception) {
+            println("⚠️ TwinEntity creation failed: ${e.message}")
+            null
         }
 
-        // Set twin data and position
-        twinEntity.setTwinData(name)
-        val pos = player.blockPos
-        twinEntity.refreshPositionAndAngles(
-            pos.x + 0.5,
-            pos.y.toDouble(),
-            pos.z + 0.5,
-            player.yaw,
-            0f
-        )
+        if (twinEntity != null) {
+            // SUCCESS: Spawn as Advanced Edition (player model with AI)
+            try {
+                twinEntity.setTwinData(name)
+                twinEntity.refreshPositionAndAngles(
+                    pos.x + 0.5,
+                    pos.y.toDouble(),
+                    pos.z + 0.5,
+                    player.yaw,
+                    0f
+                )
+                world.spawnEntity(twinEntity)
+                spawnedEntities[name] = twinEntity
 
-        // Spawn entity in world
-        world.spawnEntity(twinEntity)
-        spawnedEntities[name] = twinEntity
-
-        player.sendMessage(
-            Text.literal("§a✓ Spawned ${twinData.display_name} at your location!"),
-            false
-        )
-        player.sendMessage(
-            Text.literal("§7Right-click to chat, or use: /twin ${twinData.name} <message>"),
-            false
-        )
+                player.sendMessage(
+                    Text.literal("§a✓ Spawned ${twinData.display_name} (Advanced Edition)"),
+                    false
+                )
+                player.sendMessage(
+                    Text.literal("§7Right-click to chat, or use: /twin ${twinData.name} <message>"),
+                    false
+                )
+                println("✅ Spawned TwinEntity with custom skin and AI")
+            } catch (e: Exception) {
+                println("⚠️ TwinEntity spawn failed, falling back to MVP: ${e.message}")
+                // Fallback to MVP if Advanced Edition fails
+                TwinNPC.spawn(world, pos, twinData)
+                player.sendMessage(
+                    Text.literal("§a✓ Spawned ${twinData.display_name} (MVP Mode)"),
+                    false
+                )
+                player.sendMessage(
+                    Text.literal("§7Chat with: /twin ${twinData.name} <message>"),
+                    false
+                )
+            }
+        } else {
+            // FALLBACK: Spawn as MVP Mode (armor stand)
+            println("⚠️ TwinEntity not available, using MVP armor stand")
+            TwinNPC.spawn(world, pos, twinData)
+            player.sendMessage(
+                Text.literal("§a✓ Spawned ${twinData.display_name} (MVP Mode)"),
+                false
+            )
+            player.sendMessage(
+                Text.literal("§7Chat with: /twin ${twinData.name} <message>"),
+                false
+            )
+        }
     }
 
     /**
@@ -310,7 +341,7 @@ object TwinCommands {
     }
 
     /**
-     * Despawn a twin NPC
+     * Despawn a twin NPC (works for both Advanced Edition and MVP Mode)
      */
     private fun removeTwin(context: CommandContext<ServerCommandSource>, name: String) {
         val player = context.source.player ?: return
@@ -323,10 +354,16 @@ object TwinCommands {
             return
         }
 
-        // Remove and discard entity
-        spawnedEntities[name]?.let { entity ->
+        // Try to remove TwinEntity first (Advanced Edition)
+        val removedEntity = spawnedEntities[name]?.let { entity ->
             entity.discard()
             spawnedEntities.remove(name)
+            true
+        } ?: false
+
+        // If not found as TwinEntity, try MVP armor stand
+        if (!removedEntity && TwinNPC.isSpawned(name)) {
+            TwinNPC.despawn(name)
         }
 
         player.sendMessage(
@@ -336,9 +373,14 @@ object TwinCommands {
     }
 
     /**
-     * Check if a twin is currently spawned
+     * Check if a twin is currently spawned (checks both systems)
      */
     private fun isSpawned(name: String): Boolean {
-        return spawnedEntities[name]?.isAlive == true
+        // Check Advanced Edition entity
+        if (spawnedEntities[name]?.isAlive == true) {
+            return true
+        }
+        // Check MVP armor stand
+        return TwinNPC.isSpawned(name)
     }
 }
