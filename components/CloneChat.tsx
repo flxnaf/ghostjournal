@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
 import dynamic from 'next/dynamic'
+import { StopCircle } from 'lucide-react'
 
 const FaceWaveform3D = dynamic(() => import('./FaceWaveform3D'), { 
   ssr: false,
@@ -568,9 +569,10 @@ export default function CloneChat({ userId }: CloneChatProps) {
                 whileTap={{ scale: 0.95 }}
                 onClick={stopAudio}
                 className="px-6 py-2 bg-red-600 border-2 border-red-500 text-white font-bold rounded-lg 
-                         hover:bg-red-700 transition-colors"
+                         hover:bg-red-700 transition-colors flex items-center gap-2"
               >
-                ⏹️ Stop Speaking
+                <StopCircle className="w-4 h-4" />
+                Stop Speaking
               </motion.button>
             </div>
           )}
