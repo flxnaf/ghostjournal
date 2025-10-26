@@ -214,20 +214,20 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
               </div>
 
               {/* Actions */}
-              <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
-                <button className="w-full py-2 bg-white/10 hover:bg-white/20 
-                                 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Chat with Clone
+              <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
+                <button className="w-full py-3 bg-blue-500 hover:bg-blue-600 
+                                 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                  <MessageCircle className="w-5 h-5" />
+                  Chat
                 </button>
                 <button
                   onClick={(e) => downloadClone(clone, e)}
-                  className="w-full py-2 bg-white/5 hover:bg-white/10 
-                           text-white/80 font-medium rounded-lg transition-colors
-                           border border-white/20 hover:border-white/40 flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-white/10 hover:bg-white/20 
+                           text-white font-semibold rounded-lg transition-colors
+                           border border-white/30 hover:border-white/50 flex items-center justify-center gap-2"
                 >
-                  <Download className="w-4 h-4" />
-                  Download Clone
+                  <Download className="w-5 h-5" />
+                  Download
                 </button>
               </div>
             </motion.div>
