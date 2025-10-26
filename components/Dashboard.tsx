@@ -18,6 +18,7 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPublic, setIsPublic] = useState(user.isPublic || false)
   const [isTogglingPublic, setIsTogglingPublic] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
@@ -48,6 +49,20 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
       setIsTogglingPublic(false)
     }
   }
+
+  const handleRefreshPersonality = async () => {
+    setIsRefreshing(true)
+    try {
+      await axios.post('/api/refresh-personality', { userId: user.id })
+      alert('✅ Clone personality refreshed! Old data cleared.')
+    } catch (error) {
+      console.error('Refresh error:', error)
+      alert('Failed to refresh personality. Please try again.')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
       <div className="max-w-5xl w-full">
@@ -158,23 +173,31 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
           </div>
         </motion.div>
 
-        {/* Re-record Voice Button */}
-        {onReRecordVoice && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="mt-8 text-center"
-          >
+        {/* Action Buttons */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8 text-center space-y-3"
+        >
+          {onReRecordVoice && (
             <button
               onClick={onReRecordVoice}
               className="px-6 py-2 text-sm text-blue-400 border border-blue-400/30 rounded-lg
-                       hover:bg-blue-400/10 transition-colors"
+                       hover:bg-blue-400/10 transition-colors mr-3"
             >
               Re-record Voice
             </button>
-          </motion.div>
-        )}
+          )}
+          <button
+            onClick={handleRefreshPersonality}
+            disabled={isRefreshing}
+            className="px-6 py-2 text-sm text-green-400 border border-green-400/30 rounded-lg
+                     hover:bg-green-400/10 transition-colors disabled:opacity-50"
+          >
+            {isRefreshing ? 'Refreshing...' : '🔄 Refresh Clone Data'}
+          </button>
+        </motion.div>
 
         {/* Delete Account Button */}
         <motion.div

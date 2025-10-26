@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
 
     // Get user data (or use admin bypass)
     console.log('🔍 Looking up user:', userId)
+    console.log('   Full user ID:', userId)
     
     // Admin bypass: Allow testing without database
     const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
@@ -50,12 +51,24 @@ export async function POST(request: NextRequest) {
         name: 'Admin User'
       }
     } else {
-      user = await prisma.user.findUnique({ where: { id: userId } })
+      user = await prisma.user.findUnique({ 
+        where: { id: userId },
+        select: {
+          id: true,
+          voiceModelId: true,
+          personalityData: true,
+          name: true,
+          email: true,
+          username: true
+        }
+      })
       if (!user) {
         console.error('❌ User not found:', userId)
         return NextResponse.json({ error: 'User not found' }, { status: 404 })
       }
       console.log('✅ User found')
+      console.log('   User name:', user.name || user.username)
+      console.log('   User email:', user.email)
       console.log('🎤 User voiceModelId:', user.voiceModelId || 'NULL (will use default)')
     }
 
