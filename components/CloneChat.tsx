@@ -23,9 +23,14 @@ interface CloneChatProps {
 }
 
 export default function CloneChat({ userId, ownerName }: CloneChatProps) {
+  console.log('🎭 CloneChat initialized:')
+  console.log('   userId:', userId)
+  console.log('   ownerName:', ownerName)
+  console.log('   Is browsing another user:', !!ownerName)
+  
   const initialMessage = ownerName 
-    ? `Hey! I'm ${ownerName}'s digital clone. Talk to me and I'll respond exactly how ${ownerName} would. You can chat naturally with me to learn more about ${ownerName}.`
-    : "Hey! I'm your digital clone. Talk to me like you'd talk to yourself - I'll respond exactly how YOU would. You can also update my knowledge:\n• Say 'I have new stories: [story]' to add context\n• Ask 'How would you respond to [scenario]?' for specific reactions"
+    ? `Hey! I'm ${ownerName}'s clone. Talk to me like you're talking to ${ownerName}- I'll respond exactly how they would.`
+    : "Hey! I'm your clone. Talk to me like you're talking to yourself - I'll respond exactly how YOU would."
   
   const [messages, setMessages] = useState<Message[]>([
     {
