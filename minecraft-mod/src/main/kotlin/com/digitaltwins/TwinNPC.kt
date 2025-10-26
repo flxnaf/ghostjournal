@@ -2,7 +2,11 @@ package com.digitaltwins
 
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.LivingEntity
+import net.minecraft.entity.ai.goal.LookAtEntityGoal
+import net.minecraft.entity.ai.goal.LookAroundGoal
+import net.minecraft.entity.ai.goal.WanderAroundFarGoal
 import net.minecraft.entity.passive.VillagerEntity
+import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.text.Text
 import net.minecraft.util.math.BlockPos
@@ -40,8 +44,14 @@ object TwinNPC {
         villager.customName = Text.literal(twinData.display_name)
         villager.isCustomNameVisible = true
         villager.isInvulnerable = true
-        villager.setAiDisabled(true)
+        villager.setCanPickUpLoot(false)
+        villager.restrictTo(pos, 12)
         villager.setPersistent()
+
+        // Encourage natural idle behaviour near their spawn point
+        villager.goalSelector.add(4, LookAtEntityGoal(villager, PlayerEntity::class.java, 8.0f))
+        villager.goalSelector.add(5, WanderAroundFarGoal(villager, 0.6))
+        villager.goalSelector.add(6, LookAroundGoal(villager))
 
         world.spawnEntity(villager)
 
