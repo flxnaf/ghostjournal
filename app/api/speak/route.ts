@@ -62,11 +62,11 @@ export async function POST(request: NextRequest) {
           username: true
         }
       })
-      if (!user) {
-        console.error('❌ User not found:', userId)
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
-      }
-      console.log('✅ User found')
+    if (!user) {
+      console.error('❌ User not found:', userId)
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+    console.log('✅ User found')
       console.log('   User name:', user.name || user.username)
       console.log('   User email:', user.email)
       console.log('🎤 User voiceModelId:', user.voiceModelId || 'NULL (will use default)')
@@ -214,7 +214,8 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
       message,
       conversationHistory,
       personalityPrompt,
-      memoryContext
+      memoryContext,
+      user.name || user.username || 'User'
     )
     console.log('✅ Claude response generated:', responseText.substring(0, 100))
 
@@ -225,22 +226,22 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
 
     // Store conversation (skip for admin)
     if (!isAdminUser) {
-      await prisma.conversation.create({
-        data: {
-          userId,
-          role: 'user',
-          content: message
-        }
-      })
+    await prisma.conversation.create({
+      data: {
+        userId,
+        role: 'user',
+        content: message
+      }
+    })
 
-      await prisma.conversation.create({
-        data: {
-          userId,
-          role: 'assistant',
-          content: responseText,
-          audioUrl
-        }
-      })
+    await prisma.conversation.create({
+      data: {
+        userId,
+        role: 'assistant',
+        content: responseText,
+        audioUrl
+      }
+    })
       
       // Store in memory asynchronously (don't block response)
       if (message.length > 50) {
@@ -293,7 +294,8 @@ async function generateResponse(
   message: string,
   conversationHistory: any[],
   personalityPrompt: string,
-  memoryContext: string
+  memoryContext: string,
+  userName: string
 ): Promise<string> {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
@@ -322,7 +324,9 @@ async function generateResponse(
       content: message
     })
 
-    const systemPrompt = `You ARE this person responding naturally in a conversation. Here's what you know about yourself:
+    const systemPrompt = `YOUR NAME IS: ${userName}
+
+You ARE ${userName} responding naturally in a conversation. Here's what you know about yourself:
 
 ${personalityPrompt}
 
@@ -334,6 +338,7 @@ HOW TO RESPOND NATURALLY:
    - "Hi" → Just greet back naturally with your personality/mood
    - "How are you?" → Brief status that matches your emotional baseline
    - "Tell me about X" → THEN you can elaborate on that specific topic
+   - "What's your name?" → "I'm ${userName}" (use your actual name!)
 3. Use context to inform your TONE and PERSONALITY, not to recite your life story
 4. Be conversational and natural - don't try to demonstrate all your knowledge at once
 5. Match your emotional baseline from your context (calm/energetic/pessimistic/etc)

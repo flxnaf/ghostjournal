@@ -45,16 +45,25 @@ object TwinCommands {
                 }
         )
 
-        // /twinspawn <name>
+        // /twinspawn <replikUsername> [minecraftUsername]
         dispatcher.register(
             literal("twinspawn")
                 .then(
-                    argument("name", StringArgumentType.word())
+                    argument("replikUsername", StringArgumentType.word())
                         .executes { context ->
-                            val name = StringArgumentType.getString(context, "name")
-                            spawnTwin(context, name)
+                            val replikUsername = StringArgumentType.getString(context, "replikUsername")
+                            spawnTwin(context, replikUsername, null)
                             1
                         }
+                        .then(
+                            argument("minecraftUsername", StringArgumentType.word())
+                                .executes { context ->
+                                    val replikUsername = StringArgumentType.getString(context, "replikUsername")
+                                    val minecraftUsername = StringArgumentType.getString(context, "minecraftUsername")
+                                    spawnTwin(context, replikUsername, minecraftUsername)
+                                    1
+                                }
+                        )
                 )
         )
 
@@ -105,18 +114,13 @@ object TwinCommands {
             // Full URL provided
             urlOrUsername.startsWith("http") -> urlOrUsername
 
-            // UUID format (8-4-4-4-12 with hyphens) - matches standard UUID pattern
-            urlOrUsername.matches(Regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", RegexOption.IGNORE_CASE)) -> {
-                "https://replik.tech/api/minecraft/export/$urlOrUsername"
-            }
-
             // Username with @ prefix
             urlOrUsername.startsWith("@") -> {
                 val username = urlOrUsername.substring(1)
                 "https://replik.tech/api/minecraft/export/username/$username"
             }
 
-            // Plain username (not a UUID, no slashes or dots)
+            // Plain username (assume it's a username, not a UUID)
             !urlOrUsername.contains("/") && !urlOrUsername.contains(".") -> {
                 "https://replik.tech/api/minecraft/export/username/$urlOrUsername"
             }
@@ -181,103 +185,158 @@ object TwinCommands {
 
     /**
      * Spawn a twin NPC in the world as a TwinEntity (player model with AI)
+     * @param replikUsername The Replik clone username to spawn
+     * @param minecraftUsername Optional Minecraft username to use for the skin
      */
-    private fun spawnTwin(context: CommandContext<ServerCommandSource>, name: String) {
+    private fun spawnTwin(context: CommandContext<ServerCommandSource>, replikUsername: String, minecraftUsername: String?) {
         val player = context.source.player ?: return
         val world = player.serverWorld
 
-        // Check if already spawned
-        if (isSpawned(name)) {
-            player.sendMessage(
-                Text.literal("§e${name} is already spawned! Use /twinremove first."),
-                false
-            )
-            return
-        }
-
-        // Get twin data
-        val twinData = TwinStorage.getTwinByName(name)
+        // Get twin data first (first check by username, then by name)
+        val twinData = TwinStorage.getTwinByUsername(replikUsername) ?: TwinStorage.getTwinByName(replikUsername)
         if (twinData == null) {
             player.sendMessage(
-                Text.literal("§cTwin not found: $name. Use /twinimport first."),
+                Text.literal("§cTwin not found: $replikUsername. Use /twinimport <username> first."),
                 false
             )
             return
         }
 
-        val pos = player.blockPos
-
-        // Try to spawn as TwinEntity (Advanced Edition with AI and skins)
-        val twinEntity = try {
-            ModEntities.TWIN_ENTITY.create(world)
-        } catch (e: Exception) {
-            println("⚠️ TwinEntity creation failed: ${e.message}")
-            null
+        // Check if already spawned using the twin's actual name
+        if (isSpawned(twinData.name)) {
+            player.sendMessage(
+                Text.literal("§e${twinData.display_name} is already spawned! Use /twinremove first."),
+                false
+            )
+            return
         }
 
-        if (twinEntity != null) {
-            // SUCCESS: Spawn as Advanced Edition (player model with AI)
+        // Create and spawn TwinEntity
+        val twinEntity = try {
+            // Check if entity type is initialized
             try {
-                twinEntity.setTwinData(name)
-                twinEntity.refreshPositionAndAngles(
-                    pos.x + 0.5,
-                    pos.y.toDouble(),
-                    pos.z + 0.5,
-                    player.yaw,
-                    0f
-                )
-                world.spawnEntity(twinEntity)
-                spawnedEntities[name] = twinEntity
-
+                val entityType = ModEntities.TWIN_ENTITY
+                println("🔧 Creating entity with type: $entityType")
+                entityType.create(world)
+            } catch (e: UninitializedPropertyAccessException) {
                 player.sendMessage(
-                    Text.literal("§a✓ Spawned ${twinData.display_name} (Advanced Edition)"),
+                    Text.literal("§c✗ Entity type not initialized! Mod didn't load correctly."),
                     false
                 )
-                player.sendMessage(
-                    Text.literal("§7Right-click to chat, or use: /twin ${twinData.name} <message>"),
-                    false
-                )
-                println("✅ Spawned TwinEntity with custom skin and AI")
-            } catch (e: Exception) {
-                println("⚠️ TwinEntity spawn failed, falling back to MVP: ${e.message}")
-                // Fallback to MVP if Advanced Edition fails
-                TwinNPC.spawn(world, pos, twinData)
-                player.sendMessage(
-                    Text.literal("§a✓ Spawned ${twinData.display_name} (Villager Mode)"),
-                    false
-                )
-                player.sendMessage(
-                    Text.literal("§7Chat with: /twin ${twinData.name} <message>"),
-                    false
-                )
+                println("❌ TWIN_ENTITY not initialized!")
+                return
             }
-        } else {
-            // FALLBACK: Spawn as MVP Mode (villager)
-            println("⚠️ TwinEntity not available, using MVP villager")
-            TwinNPC.spawn(world, pos, twinData)
+        } catch (e: Exception) {
             player.sendMessage(
-                Text.literal("§a✓ Spawned ${twinData.display_name} (Villager Mode)"),
+                Text.literal("§c✗ Failed to create twin entity: ${e.message}"),
                 false
             )
+            println("❌ Full error:")
+            e.printStackTrace()
+            return
+        }
+        
+        if (twinEntity == null) {
             player.sendMessage(
-                Text.literal("§7Chat with: /twin ${twinData.name} <message>"),
+                Text.literal("§cFailed to create twin entity (null returned)"),
                 false
             )
+            return
+        }
+
+        // Set twin data
+        try {
+            twinEntity.setTwinData(twinData.name)
+            player.sendMessage(
+                Text.literal("§7Debug: Twin data set successfully"),
+                false
+            )
+        } catch (e: Exception) {
+            player.sendMessage(
+                Text.literal("§c✗ Failed to set twin data: ${e.message}"),
+                false
+            )
+            e.printStackTrace()
+            twinEntity.discard()
+            return
+        }
+        
+        // Set position
+        val pos = player.blockPos
+        twinEntity.refreshPositionAndAngles(
+            pos.x + 0.5,
+            pos.y.toDouble(),
+            pos.z + 0.5,
+            player.yaw,
+            0f
+        )
+
+        // Spawn entity in world
+        world.spawnEntity(twinEntity)
+        spawnedEntities[twinData.name] = twinEntity
+
+        player.sendMessage(
+            Text.literal("§a✓ Spawned ${twinData.display_name} at your location!"),
+            false
+        )
+        
+        player.sendMessage(
+            Text.literal("§7Right-click to chat, or use: /twin ${twinData.username ?: twinData.name} <message>"),
+            false
+        )
+        
+        // If Minecraft username provided, fetch and apply skin AFTER spawning
+        if (minecraftUsername != null) {
+            player.sendMessage(
+                Text.literal("§e⏳ Fetching Minecraft skin for $minecraftUsername..."),
+                false
+            )
+            
+            // Fetch skin async to not block
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val skinUrl = TwinAPI.fetchMinecraftSkin(minecraftUsername)
+                    if (skinUrl != null) {
+                        // Apply skin on main thread
+                        player.server.execute {
+                            twinEntity.setMinecraftSkin(skinUrl)
+                            player.sendMessage(
+                                Text.literal("§a✓ Applied skin from $minecraftUsername"),
+                                false
+                            )
+                        }
+                    } else {
+                        player.server.execute {
+                            player.sendMessage(
+                                Text.literal("§e⚠ Could not fetch skin for $minecraftUsername, using default"),
+                                false
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    player.server.execute {
+                        player.sendMessage(
+                            Text.literal("§e⚠ Skin fetch failed: ${e.message}"),
+                            false
+                        )
+                    }
+                }
+            }
         }
     }
 
     /**
      * Send a message to a twin and play voice response
-     * Send a message to a twin
+     * @param usernameOrName Can be either Replik username or display name
      */
-    private fun chatWithTwin(context: CommandContext<ServerCommandSource>, name: String, message: String) {
+    private fun chatWithTwin(context: CommandContext<ServerCommandSource>, usernameOrName: String, message: String) {
         val player = context.source.player ?: return
 
-        // Get twin data
-        val twinData = TwinStorage.getTwinByName(name)
+        // Get twin data (first check by username, then by name)
+        val twinData = TwinStorage.getTwinByUsername(usernameOrName) ?: TwinStorage.getTwinByName(usernameOrName)
         if (twinData == null) {
             player.sendMessage(
-                Text.literal("§cTwin not found: $name"),
+                Text.literal("§cTwin not found: $usernameOrName. Use /twinimport <username> first."),
                 false
             )
             return
@@ -341,7 +400,7 @@ object TwinCommands {
     }
 
     /**
-     * Despawn a twin NPC (works for both Advanced Edition and MVP Mode)
+     * Despawn a twin NPC
      */
     private fun removeTwin(context: CommandContext<ServerCommandSource>, name: String) {
         val player = context.source.player ?: return
@@ -354,16 +413,10 @@ object TwinCommands {
             return
         }
 
-        // Try to remove TwinEntity first (Advanced Edition)
-        val removedEntity = spawnedEntities[name]?.let { entity ->
+        // Remove and discard entity
+        spawnedEntities[name]?.let { entity ->
             entity.discard()
             spawnedEntities.remove(name)
-            true
-        } ?: false
-
-        // If not found as TwinEntity, try MVP villager fallback
-        if (!removedEntity && TwinNPC.isSpawned(name)) {
-            TwinNPC.despawn(name)
         }
 
         player.sendMessage(
@@ -373,14 +426,9 @@ object TwinCommands {
     }
 
     /**
-     * Check if a twin is currently spawned (checks both systems)
+     * Check if a twin is currently spawned
      */
     private fun isSpawned(name: String): Boolean {
-        // Check Advanced Edition entity
-        if (spawnedEntities[name]?.isAlive == true) {
-            return true
-        }
-        // Check MVP villager fallback
-        return TwinNPC.isSpawned(name)
+        return spawnedEntities[name]?.isAlive == true
     }
 }

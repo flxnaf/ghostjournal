@@ -60,7 +60,24 @@ object TwinStorage {
      * Get twin by name
      */
     fun getTwinByName(name: String): TwinAPI.TwinData? {
-        return load().find { it.name.equals(name, ignoreCase = true) }
+        println("🔍 TwinStorage.getTwinByName called with: $name")
+        val twins = load()
+        println("   Available twins: ${twins.map { it.name }}")
+        val result = twins.find { it.name.equals(name, ignoreCase = true) }
+        println("   Result: ${if (result != null) "Found: ${result.display_name}" else "Not found"}")
+        return result
+    }
+
+    /**
+     * Get twin by username (Replik username)
+     */
+    fun getTwinByUsername(username: String): TwinAPI.TwinData? {
+        println("🔍 TwinStorage.getTwinByUsername called with: $username")
+        val twins = load()
+        println("   Available usernames: ${twins.map { it.username }}")
+        val result = twins.find { it.username?.equals(username, ignoreCase = true) == true }
+        println("   Result: ${if (result != null) "Found: ${result.display_name}" else "Not found"}")
+        return result
     }
 
     /**

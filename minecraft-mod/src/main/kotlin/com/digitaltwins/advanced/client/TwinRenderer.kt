@@ -24,9 +24,15 @@ class TwinRenderer(context: EntityRendererFactory.Context) :
      */
     override fun getTexture(entity: TwinEntity): Identifier {
         // Use Minecraft skin if available, fallback to Steve
-        return SkinCache.getSkin(
-            entity.minecraftSkinUrl,
-            entity.twinName
-        )
+        return try {
+            SkinCache.getSkin(
+                entity.minecraftSkinUrl,
+                entity.twinName
+            )
+        } catch (e: Exception) {
+            println("❌ Failed to get skin for ${entity.twinName}: ${e.message}")
+            // Return Steve as absolute fallback
+            Identifier("minecraft", "textures/entity/steve.png")
+        }
     }
 }
