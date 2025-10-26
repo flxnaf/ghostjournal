@@ -69,9 +69,11 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
 
       // Clear form
       setNewEntry({ category: 'story', content: '' })
-    } catch (error) {
-      console.error('Error saving entry:', error)
-      alert('Failed to save entry. Please try again.')
+    } catch (error: any) {
+      console.error('❌ Error saving entry:', error)
+      console.error('   Error response:', error.response?.data)
+      const errorMsg = error.response?.data?.details || error.message || 'Unknown error'
+      alert(`Failed to save entry: ${errorMsg}`)
     } finally {
       setSaving(false)
     }

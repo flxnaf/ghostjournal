@@ -13,12 +13,68 @@ const prisma = new PrismaClient()
  * 3. Stores personality traits for future conversations
  */
 
-export async function POST(request: NextRequest) {
+/**
+ * GET - Fetch user's personality data and profile info
+ */
+export async function GET(request: NextRequest) {
   try {
-    const { userId } = await request.json()
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        personalityData: true,
+        audioUrl: true,
+        voiceModelId: true,
+        faceData: true,
+        name: true,
+        email: true,
+        createdAt: true
+      }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(user)
+  } catch (error: any) {
+    console.error('❌ GET personality error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch personality', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * POST - Save personality data or generate from memories
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { userId, personalityData } = body
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID required' }, { status: 400 })
+    }
+
+    // If personalityData is provided, save it directly (from ContextBuilder)
+    if (personalityData) {
+      console.log('💾 Saving personality data for user:', userId)
+      await prisma.user.update({
+        where: { id: userId },
+        data: { personalityData: JSON.stringify(personalityData) }
+      })
+      return NextResponse.json({ 
+        success: true,
+        message: 'Personality data saved'
+      })
     }
 
     // Get user memories
@@ -89,28 +145,20 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Claude API error:', error)
-    
-    // Fallback mock personality
-    const { userId } = await request.json()
-    const mockPersonality = {
-      traits: ['curious', 'analytical', 'friendly', 'creative'],
-      quirks: ['thoughtful pauses', 'uses analogies'],
-      conversationStyle: 'warm and engaging',
-      interests: ['technology', 'creativity', 'problem-solving'],
-      background: 'An individual with diverse interests and experiences'
-    }
-    
-    await prisma.user.update({
-      where: { id: userId },
-      data: { personalityData: JSON.stringify(mockPersonality) }
+    console.error('❌ POST personality error:', error)
+    console.error('   Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta
     })
-    
-    return NextResponse.json({ 
-      personality: mockPersonality,
-      message: 'Mock personality created (API error)',
-      error: error.message
-    })
+    return NextResponse.json(
+      { 
+        error: 'Failed to save personality', 
+        details: error.message,
+        code: error.code
+      },
+      { status: 500 }
+    )
   }
 }
 
