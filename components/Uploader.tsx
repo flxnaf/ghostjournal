@@ -26,6 +26,11 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
   const [processingFace, setProcessingFace] = useState(false)
   const [captureMode, setCaptureMode] = useState(false)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [contexts, setContexts] = useState({
+    story: '',
+    habit: '',
+    reaction: ''
+  })
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -244,17 +249,18 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
       setProcessingFace(false)
       setProgress(50)
 
-      console.log('📤 Step 3: Uploading face data...')
+      console.log('📤 Step 3: Uploading face data and initial context...')
 
-      // Send personalized face contours to API
+      // Send personalized face contours and initial context to API
       const response = await axios.post('/api/update-user', {
         userId,
-        faceContours: personalizedFace
+        faceContours: personalizedFace,
+        contexts
       }, {
         headers: { 'Content-Type': 'application/json' }
       })
 
-      console.log('✅ Face model uploaded!')
+      console.log('✅ Face model and initial context uploaded!')
       setProgress(100)
       
       // Brief pause to show completion, then proceed
@@ -328,7 +334,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               className="px-12 py-6 bg-transparent border-2 border-white text-white font-bold text-2xl rounded-xl
                        hover:bg-white hover:text-black transition-colors"
             >
-              📷 Start Taking Photos
+              📷 Take Photo
             </motion.button>
           </div>
         ) : (
@@ -410,6 +416,60 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
             </div>
           </div>
         )}
+      </div>
+
+      {/* Initial Context Questions */}
+      <div className="bg-dark-surface rounded-lg p-8 glow-border">
+        <h2 className="text-3xl font-bold text-white mb-6">
+          Tell Us About Yourself
+        </h2>
+        <p className="text-gray-400 mb-6">
+          Help your clone understand you better by sharing some context.
+        </p>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              📖 Tell us a story about yourself
+            </label>
+            <textarea
+              value={contexts.story}
+              onChange={(e) => setContexts({ ...contexts, story: e.target.value })}
+              rows={3}
+              className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
+                       text-white focus:border-white focus:outline-none"
+              placeholder="e.g., I grew up in a small town and always loved technology..."
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              🔄 Describe a daily habit
+            </label>
+            <textarea
+              value={contexts.habit}
+              onChange={(e) => setContexts({ ...contexts, habit: e.target.value })}
+              rows={3}
+              className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
+                       text-white focus:border-white focus:outline-none"
+              placeholder="e.g., Every morning I drink coffee and read tech news..."
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              😊 How do you typically react to challenges?
+            </label>
+            <textarea
+              value={contexts.reaction}
+              onChange={(e) => setContexts({ ...contexts, reaction: e.target.value })}
+              rows={3}
+              className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
+                       text-white focus:border-white focus:outline-none"
+              placeholder="e.g., I stay calm and break problems into smaller pieces..."
+            />
+          </div>
+        </div>
       </div>
 
       {/* Fixed Progress Bar - Bottom Right Corner */}
