@@ -112,7 +112,22 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
     console.log('➡️ Moving to upload step...')
     setStep('upload')
     
-    // Start voice training in background
+    // Check if admin bypass - skip database operations
+    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
+    
+    if (isAdminBypass) {
+      console.log('🔑 Admin bypass - using mock userId')
+      // Use the user's admin ID directly, no database needed
+      setUserId(user.id)
+      setVoiceTraining({ 
+        isTraining: false, 
+        progress: 100, 
+        status: 'Admin mode - voice training skipped' 
+      })
+      return
+    }
+    
+    // Start voice training in background (for real users)
     console.log('🎤 Recording complete, starting voice training...')
     setVoiceTraining({ isTraining: true, progress: 10, status: 'Uploading audio...' })
     
