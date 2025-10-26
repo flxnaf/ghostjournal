@@ -14,6 +14,8 @@ interface DashboardProps {
 export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onLogout }: DashboardProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isPublic, setIsPublic] = useState(user.isPublic || false)
+  const [isTogglingPublic, setIsTogglingPublic] = useState(false)
 
   const handleDeleteAccount = async () => {
     setIsDeleting(true)
@@ -25,6 +27,23 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
       console.error('Delete account error:', error)
       alert('Failed to delete account. Please try again.')
       setIsDeleting(false)
+    }
+  }
+
+  const handleTogglePublic = async () => {
+    setIsTogglingPublic(true)
+    try {
+      const newStatus = !isPublic
+      await axios.post('/api/toggle-public', { 
+        userId: user.id, 
+        isPublic: newStatus 
+      })
+      setIsPublic(newStatus)
+    } catch (error) {
+      console.error('Toggle public error:', error)
+      alert('Failed to update visibility. Please try again.')
+    } finally {
+      setIsTogglingPublic(false)
     }
   }
   return (
@@ -91,12 +110,44 @@ export default function Dashboard({ user, onCreateCharacter, onBrowseClones, onL
           </motion.div>
         </div>
 
+        {/* Public/Private Toggle */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8 max-w-2xl mx-auto bg-dark-surface rounded-xl p-6 border border-white/20"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-1">
+                {isPublic ? '🌐 Public Clone' : '🔒 Private Clone'}
+              </h3>
+              <p className="text-sm text-gray-400">
+                {isPublic 
+                  ? 'Your clone is searchable. Others can find and download it for Minecraft.'
+                  : 'Your clone is private. Only you can access it.'}
+              </p>
+            </div>
+            <button
+              onClick={handleTogglePublic}
+              disabled={isTogglingPublic}
+              className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                isPublic
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/50 hover:bg-green-500/30'
+                  : 'bg-white/10 text-gray-400 border border-white/20 hover:bg-white/20'
+              } disabled:opacity-50`}
+            >
+              {isTogglingPublic ? '...' : (isPublic ? 'Make Private' : 'Make Public')}
+            </button>
+          </div>
+        </motion.div>
+
         {/* Delete Account Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="mt-12 text-center"
+          className="mt-8 text-center"
         >
           <button
             onClick={() => setShowDeleteConfirm(true)}
