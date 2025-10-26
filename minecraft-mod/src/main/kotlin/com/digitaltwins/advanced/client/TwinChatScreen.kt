@@ -1,7 +1,6 @@
 package com.digitaltwins.advanced.client
 
 import com.digitaltwins.TwinAPI
-import com.digitaltwins.TwinAudioPlayer
 import com.digitaltwins.TwinStorage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -272,34 +271,23 @@ class TwinChatScreen(
                     // Add response
                     val twinData = TwinStorage.getTwinByName(twinName)
                     val displayName = twinData?.display_name ?: twinName
+                    val voiceModelId = twinData?.voice_model_id
                     chatHistory.add("§b[$displayName]§f ${response.text}")
                     
-                    println("🔊 Fish Audio Debug:")
-                    println("   response.audioUrl: ${response.audioUrl}")
-                    println("   isEmpty: ${response.audioUrl.isNullOrEmpty()}")
+                    println("🔊 Fish Audio TTS:")
+                    println("   Response text: ${response.text.substring(0, minOf(100, response.text.length))}...")
+                    println("   Voice Model ID: $voiceModelId")
 
-                    // Play voice audio if available
-                    if (!response.audioUrl.isNullOrEmpty()) {
-                        val fullAudioUrl = if (response.audioUrl.startsWith("http")) {
-                            response.audioUrl
-                        } else {
-                            val baseUrl = apiEndpoint.replace("/api/speak", "")
-                            "$baseUrl${response.audioUrl}"
-                        }
-                        
-                        println("   fullAudioUrl: $fullAudioUrl")
-                        chatHistory.add("§a♪ Playing voice...")
-
-                        try {
-                            TwinAudioPlayer.enqueue(fullAudioUrl)
-                            println("   ✅ Audio queued for playback")
-                        } catch (e: Exception) {
-                            println("   ❌ Audio enqueue failed: ${e.message}")
-                            chatHistory.add("§c✗ Audio playback failed")
-                        }
-                    } else {
-                        println("   ⚠️ No audio URL provided")
-                        chatHistory.add("§7(No voice audio)")
+                    // Generate and play voice using Fish Audio TTS
+                    chatHistory.add("§a♪ Generating voice...")
+                    
+                    try {
+                        TwinAudioPlayer.playTextWithVoice(response.text, voiceModelId)
+                        println("   ✅ TTS generation started")
+                    } catch (e: Exception) {
+                        println("   ❌ TTS generation failed: ${e.message}")
+                        chatHistory.add("§c✗ Voice generation failed")
+                        e.printStackTrace()
                     }
 
                     isWaitingForResponse = false

@@ -4,63 +4,109 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.minecraft.client.MinecraftClient
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.TimeUnit
 
 /**
  * Audio player for Twin voice responses
- * Downloads MP3 and plays using system audio player (afplay on Mac)
+ * Uses Fish Audio TTS API to generate speech from text in real-time
  */
 object TwinAudioPlayer {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build()
     private var currentProcess: Process? = null
     private val tempDir = Files.createTempDirectory("twin_audio").toFile().apply { 
         deleteOnExit() 
     }
     
+    // Fish Audio API configuration
+    private val FISH_API_KEY = System.getenv("FISH_AUDIO_API_KEY") 
+        ?: "dd66b6dad1214de68bd1fa9cd28f3c55"  // Fallback to your key
+    
     /**
-     * Play audio from a URL
-     * Downloads the file and plays it using system audio player
+     * Generate speech from text using Fish Audio TTS API and play it
+     * @param text The text to speak
+     * @param voiceModelId The Fish Audio voice model ID (your trained voice)
      */
-    fun playAudioFromUrl(url: String) {
+    fun playTextWithVoice(text: String, voiceModelId: String?) {
         println("═══════════════════════════════════════════")
-        println("🔊 TWIN AUDIO PLAYER")
+        println("🔊 TWIN AUDIO PLAYER (Fish Audio TTS)")
         println("═══════════════════════════════════════════")
-        println("   URL: $url")
-        println("   Temp dir: ${tempDir.absolutePath}")
+        println("   Text: ${text.substring(0, minOf(100, text.length))}...")
+        println("   Voice Model ID: ${voiceModelId ?: "DEFAULT"}")
+        println("   Fish API Key: ${FISH_API_KEY.substring(0, 10)}...")
         
         // Stop any currently playing audio
         stopCurrentAudio()
         
-        // Download and play on background thread
+        // Generate and play on background thread
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                println("📥 Downloading audio...")
+                // Clean text for TTS (remove action descriptions)
+                val cleanText = text
+                    .replace(Regex("\\*[^*]+\\*"), "") // Remove *actions*
+                    .replace(Regex("\\([^)]+\\)"), "") // Remove (thoughts)
+                    .trim()
                 
-                // Download audio file
+                println("🧹 Cleaned text: ${cleanText.substring(0, minOf(100, cleanText.length))}...")
+                
+                // Determine which voice to use
+                val referenceId = if (!voiceModelId.isNullOrEmpty() && !voiceModelId.startsWith("mock_")) {
+                    println("✅ Using trained voice model: ${voiceModelId.substring(0, 20)}...")
+                    voiceModelId
+                } else {
+                    println("⚠️ Using default neutral English voice")
+                    "af1ddb5dc0e644ebb16b58ed466e27c6"
+                }
+                
+                // Build Fish Audio TTS request using FormData
+                println("📤 Calling Fish Audio TTS API...")
+                val boundary = "----WebKitFormBoundary${System.currentTimeMillis()}"
+                val formData = buildString {
+                    append("--$boundary\r\n")
+                    append("Content-Disposition: form-data; name=\"text\"\r\n\r\n")
+                    append("$cleanText\r\n")
+                    append("--$boundary\r\n")
+                    append("Content-Disposition: form-data; name=\"reference_id\"\r\n\r\n")
+                    append("$referenceId\r\n")
+                    append("--$boundary\r\n")
+                    append("Content-Disposition: form-data; name=\"format\"\r\n\r\n")
+                    append("mp3\r\n")
+                    append("--$boundary--\r\n")
+                }
+                
                 val request = Request.Builder()
-                    .url(url)
+                    .url("https://api.fish.audio/v1/tts")
+                    .header("Authorization", "Bearer $FISH_API_KEY")
+                    .header("Content-Type", "multipart/form-data; boundary=$boundary")
+                    .post(formData.toRequestBody("multipart/form-data; boundary=$boundary".toMediaType()))
                     .build()
                 
                 val response = client.newCall(request).execute()
                 
                 if (!response.isSuccessful) {
-                    println("❌ HTTP Error: ${response.code} - ${response.message}")
+                    println("❌ Fish Audio API Error: ${response.code} - ${response.message}")
+                    println("   Response body: ${response.body?.string()}")
                     return@launch
                 }
                 
                 val audioBytes = response.body?.bytes()
                 if (audioBytes == null || audioBytes.isEmpty()) {
-                    println("❌ No audio data received")
+                    println("❌ No audio data received from Fish Audio")
                     return@launch
                 }
                 
-                println("✅ Downloaded ${audioBytes.size} bytes (${audioBytes.size / 1024} KB)")
+                println("✅ Generated ${audioBytes.size} bytes (${audioBytes.size / 1024} KB) of audio")
                 
                 // Save to temp file
-                val tempFile = File(tempDir, "response_${System.currentTimeMillis()}.mp3")
+                val tempFile = File(tempDir, "tts_${System.currentTimeMillis()}.mp3")
                 tempFile.writeBytes(audioBytes)
                 println("💾 Saved to: ${tempFile.absolutePath}")
                 
@@ -68,10 +114,20 @@ object TwinAudioPlayer {
                 playSystemAudio(tempFile)
                 
             } catch (e: Exception) {
-                println("❌ Download/playback error: ${e.message}")
+                println("❌ TTS generation/playback error: ${e.message}")
                 e.printStackTrace()
             }
         }
+    }
+    
+    /**
+     * DEPRECATED: Old method that downloaded from URL
+     * Use playTextWithVoice() instead
+     */
+    @Deprecated("Use playTextWithVoice() for direct Fish Audio TTS")
+    fun playAudioFromUrl(url: String) {
+        println("⚠️ playAudioFromUrl is deprecated - this shouldn't be called")
+        println("   URL: $url")
     }
     
     /**
