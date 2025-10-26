@@ -39,9 +39,9 @@ export default function LandingPage() {
   const handleAdminLogin = () => {
     // Simple admin bypass - check for admin key
     if (adminKey === 'ghostadmin' || adminKey === 'admin123') {
-      // Create a fake admin user session
+      // Create a fake admin user session with valid UUID
       const adminUser = {
-        id: 'admin-' + Date.now(),
+        id: '00000000-0000-0000-0000-000000000001', // Fixed UUID for admin
         email: 'admin@replik.local',
         username: 'admin',
         name: 'Admin User',

@@ -334,47 +334,10 @@ export default function CloneChat({ userId }: CloneChatProps) {
     console.log('💬 Sending message:', input)
 
     try {
-      // Check for admin bypass
-      const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
+      // Admin bypass now uses REAL APIs (just skips database auth checks)
+      // This allows testing with Fish Audio TTS and Claude personality
       
-      if (isAdminBypass) {
-        console.log('🔑 Admin bypass - returning mock response')
-        
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Mock response based on user input
-        const mockResponses = [
-          "That's a great question! As your AI clone, I'd handle that situation by staying calm and analyzing the options.",
-          "Interesting! I think I'd approach it from a creative angle first, then get practical.",
-          "Oh yeah, I remember thinking about that. I'd probably start by gathering more information before making a decision.",
-          "Haha, good point! I tend to be optimistic about challenges like that.",
-          "I see what you mean. My usual approach would be to break it down into smaller, manageable steps."
-        ]
-        
-        const mockResponse = mockResponses[Math.floor(Math.random() * mockResponses.length)]
-        
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: mockResponse
-        }
-        
-        setCurrentEmotion('neutral')
-        setMessages(prev => [...prev, assistantMessage])
-        setIsLoading(false)
-        
-        // Use browser TTS for admin bypass
-        if ('speechSynthesis' in window) {
-          const utterance = new SpeechSynthesisUtterance(mockResponse)
-          utterance.rate = 1.0
-          utterance.pitch = 1.0
-          utterance.volume = 1.0
-          window.speechSynthesis.speak(utterance)
-        }
-        return
-      }
-      
-      // Send message to API (for real users)
+      // Send message to API
       console.log('📡 Calling /api/speak...')
       const response = await axios.post('/api/speak', {
         userId,

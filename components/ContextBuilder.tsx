@@ -20,21 +20,44 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
   const [newEntry, setNewEntry] = useState({ category: 'story', content: '' })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  
+  // Check if user is admin
+  const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
+  const STORAGE_KEY = `context_entries_${userId}`
 
-  // Load existing context from database
+  // Load existing context from database or localStorage
   useEffect(() => {
     loadContext()
   }, [userId])
 
   const loadContext = async () => {
     try {
+      // For admin users, try localStorage first
+      if (isAdminUser) {
+        const cached = localStorage.getItem(STORAGE_KEY)
+        if (cached) {
+          console.log('📦 Loading context from localStorage (admin mode)')
+          setEntries(JSON.parse(cached))
+          setLoading(false)
+          return
+        }
+      }
+      
+      // Try database
       const response = await axios.get(`/api/personality?userId=${userId}`)
-      if (response.data.personality) {
-        const personalityData = JSON.parse(response.data.personality)
+      if (response.data.personalityData) {
+        const personalityData = JSON.parse(response.data.personalityData)
         setEntries(personalityData.entries || [])
       }
     } catch (error) {
       console.error('Error loading context:', error)
+      
+      // Fallback to localStorage for any user
+      const cached = localStorage.getItem(STORAGE_KEY)
+      if (cached) {
+        console.log('📦 Loading context from localStorage (fallback)')
+        setEntries(JSON.parse(cached))
+      }
     } finally {
       setLoading(false)
     }
@@ -58,14 +81,22 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       const updatedEntries = [...entries, entry]
       setEntries(updatedEntries)
 
-      // Save to database
-      await axios.post('/api/personality', {
-        userId,
-        personalityData: {
-          entries: updatedEntries,
-          lastUpdated: new Date()
-        }
-      })
+      // Save to localStorage (for admin or as backup)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
+      console.log('💾 Saved to localStorage:', STORAGE_KEY)
+
+      // Save to database (skip for admin)
+      if (!isAdminUser) {
+        await axios.post('/api/personality', {
+          userId,
+          personalityData: {
+            entries: updatedEntries,
+            lastUpdated: new Date()
+          }
+        })
+      } else {
+        console.log('🔑 Admin mode - skipping database save')
+      }
 
       // Clear form
       setNewEntry({ category: 'story', content: '' })
@@ -83,16 +114,22 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
     const updatedEntries = entries.filter(e => e.id !== id)
     setEntries(updatedEntries)
 
-    try {
-      await axios.post('/api/personality', {
-        userId,
-        personalityData: {
-          entries: updatedEntries,
-          lastUpdated: new Date()
-        }
-      })
-    } catch (error) {
-      console.error('Error deleting entry:', error)
+    // Save to localStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
+
+    // Save to database (skip for admin)
+    if (!isAdminUser) {
+      try {
+        await axios.post('/api/personality', {
+          userId,
+          personalityData: {
+            entries: updatedEntries,
+            lastUpdated: new Date()
+          }
+        })
+      } catch (error) {
+        console.error('Error deleting entry:', error)
+      }
     }
   }
 
@@ -110,7 +147,7 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       userId,
       exportDate: new Date().toISOString(),
       
-      // Context entries (stories, habits, etc.)
+      // Context entries (stories, habits, etc.) - use current state, not API
       context: {
         entries: entries.map(e => ({
           category: e.category,
@@ -125,7 +162,15 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       audioData: {
         audioUrl: userData.audioUrl || null,
         voiceModelId: userData.voiceModelId || null,
-        voiceModelProvider: 'fish-audio', // Or whatever provider you use
+        voiceModelProvider: 'fish-audio',
+        
+        // IMPORTANT: Instructions for Minecraft integration
+        usage: {
+          description: "Use voiceModelId to make Fish Audio API calls for voice synthesis",
+          apiEndpoint: "https://api.fish.audio/v1/tts",
+          requiredFields: ["text", "reference_id (voiceModelId)", "format"],
+          note: "The actual voice model is hosted by Fish Audio and accessed via API. You cannot download the model itself."
+        }
       },
       
       // Face/appearance data
@@ -135,7 +180,14 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       metadata: {
         name: userData.name || 'Unknown',
         email: userData.email || null,
-        createdAt: userData.createdAt || new Date().toISOString()
+        createdAt: userData.createdAt || new Date().toISOString(),
+        
+        // Add info for Minecraft integration
+        minecraftIntegration: {
+          howToUse: "See MINECRAFT_INTEGRATION.md in the Replik repo",
+          apiUrl: window.location.origin + "/api/speak",
+          requiresInternet: true
+        }
       }
     }
 
