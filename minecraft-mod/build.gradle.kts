@@ -33,6 +33,12 @@ dependencies {
     // Coroutines for async operations
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     include("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
+
+    // Audio playback support for voice
+    implementation("com.googlecode.soundlibs:mp3spi:1.9.5.4")
+    include("com.googlecode.soundlibs:mp3spi:1.9.5.4")
+    implementation("com.googlecode.soundlibs:jlayer:1.0.1.4")
+    include("com.googlecode.soundlibs:jlayer:1.0.1.4")
 }
 
 tasks {
