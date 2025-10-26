@@ -234,6 +234,14 @@ class TwinChatScreen(
         val message = inputField.text.trim()
         if (message.isEmpty() || isWaitingForResponse) return
 
+        println("═══════════════════════════════════════════")
+        println("📤 SENDING MESSAGE TO API")
+        println("═══════════════════════════════════════════")
+        println("   Message: $message")
+        println("   API Endpoint: $apiEndpoint")
+        println("   Twin ID: $twinId")
+        println("   Twin Name: $twinName")
+
         // Add to chat history
         chatHistory.add("§a[You]§f $message")
         inputField.text = ""
@@ -245,11 +253,16 @@ class TwinChatScreen(
         // Send to API async
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                println("📡 Calling TwinAPI.sendMessage...")
                 val response = TwinAPI.sendMessage(
                     apiEndpoint,
                     twinId,
                     message
                 )
+                
+                println("✅ Got API response!")
+                println("   Response text: ${response.text.substring(0, minOf(100, response.text.length))}...")
+                println("   Audio URL: ${response.audioUrl ?: "NULL"}")
 
                 // Add response to chat history (on main thread)
                 client?.execute {

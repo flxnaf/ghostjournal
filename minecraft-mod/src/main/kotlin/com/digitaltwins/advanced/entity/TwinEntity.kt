@@ -6,6 +6,9 @@ import net.minecraft.entity.EntityType
 import net.minecraft.entity.ai.goal.*
 import net.minecraft.entity.attribute.DefaultAttributeContainer
 import net.minecraft.entity.attribute.EntityAttributes
+import net.minecraft.entity.data.DataTracker
+import net.minecraft.entity.data.TrackedData
+import net.minecraft.entity.data.TrackedDataHandlerRegistry
 import net.minecraft.entity.mob.MobEntity
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.nbt.NbtCompound
@@ -22,6 +25,12 @@ import net.minecraft.world.World
 class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : MobEntity(entityType, world) {
 
     companion object {
+        // Data trackers for client-server sync
+        private val MINECRAFT_SKIN_URL: TrackedData<String> = DataTracker.registerData(
+            TwinEntity::class.java,
+            TrackedDataHandlerRegistry.STRING
+        )
+        
         /**
          * Create default attributes for twin entities
          */
@@ -60,14 +69,26 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : MobEnti
         private set
 
     /**
-     * Minecraft skin URL for this twin
+     * Minecraft skin URL for this twin (synced via DataTracker)
      */
-    var minecraftSkinUrl: String? = null
-        private set
+    var minecraftSkinUrl: String?
+        get() {
+            val url = dataTracker.get(MINECRAFT_SKIN_URL)
+            return if (url.isEmpty()) null else url
+        }
+        private set(value) {
+            dataTracker.set(MINECRAFT_SKIN_URL, value ?: "")
+        }
 
     init {
         // Make entity persistent (entities are persistent by default)
         println("🏗️ TwinEntity init block called")
+    }
+    
+    override fun initDataTracker() {
+        super.initDataTracker()
+        dataTracker.startTracking(MINECRAFT_SKIN_URL, "")
+        println("🔧 TwinEntity.initDataTracker() - skin URL tracker initialized")
     }
 
     override fun initGoals() {
@@ -126,10 +147,15 @@ class TwinEntity(entityType: EntityType<out TwinEntity>, world: World) : MobEnti
 
     /**
      * Set Minecraft skin URL (overrides the one from TwinStorage)
+     * Automatically synced to client via DataTracker
      */
     fun setMinecraftSkin(skinUrl: String) {
-        this.minecraftSkinUrl = skinUrl
-        println("🎨 Applied skin URL to ${twinDisplayName}: ${skinUrl.substring(0, 50)}...")
+        println("🎨 setMinecraftSkin called")
+        println("   Before: ${this.minecraftSkinUrl}")
+        this.minecraftSkinUrl = skinUrl  // DataTracker will auto-sync to client!
+        println("   After: ${this.minecraftSkinUrl}")
+        println("   Applied skin URL to ${twinDisplayName}: ${skinUrl.substring(0, minOf(50, skinUrl.length))}...")
+        println("   ✅ DataTracker will sync this to all clients automatically")
     }
 
     /**
