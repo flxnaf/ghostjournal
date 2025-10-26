@@ -19,13 +19,18 @@ interface Message {
 
 interface CloneChatProps {
   userId: string
+  ownerName?: string | null // Name of the clone owner (if browsing another user's clone)
 }
 
-export default function CloneChat({ userId }: CloneChatProps) {
+export default function CloneChat({ userId, ownerName }: CloneChatProps) {
+  const initialMessage = ownerName 
+    ? `Hey! I'm ${ownerName}'s digital clone. Talk to me and I'll respond exactly how ${ownerName} would. You can chat naturally with me to learn more about ${ownerName}.`
+    : "Hey! I'm your digital clone. Talk to me like you'd talk to yourself - I'll respond exactly how YOU would. You can also update my knowledge:\n• Say 'I have new stories: [story]' to add context\n• Ask 'How would you respond to [scenario]?' for specific reactions"
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hey! I'm your digital clone. Talk to me like you'd talk to yourself - I'll respond exactly how YOU would. You can also update my knowledge:\n• Say 'I have new stories: [story]' to add context\n• Ask 'How would you respond to [scenario]?' for specific reactions"
+      content: initialMessage
     }
   ])
   const [input, setInput] = useState('')

@@ -10,9 +10,10 @@ interface CloneTabsProps {
   userId: string
   currentUserId?: string // The logged-in user's ID
   isOwner?: boolean // Whether the current user owns this clone
+  ownerName?: string | null // The name of the clone owner (for browsing other clones)
 }
 
-export default function CloneTabs({ userId, currentUserId, isOwner = true }: CloneTabsProps) {
+export default function CloneTabs({ userId, currentUserId, isOwner = true, ownerName }: CloneTabsProps) {
   // If viewing someone else's clone, default to chat tab
   const [activeTab, setActiveTab] = useState<'context' | 'chat'>(isOwner ? 'context' : 'chat')
 
@@ -75,7 +76,7 @@ export default function CloneTabs({ userId, currentUserId, isOwner = true }: Clo
         {activeTab === 'context' && isOwner ? (
           <ContextBuilder userId={userId} />
         ) : (
-          <CloneChat userId={userId} />
+          <CloneChat userId={userId} ownerName={ownerName} />
         )}
       </motion.div>
     </div>
