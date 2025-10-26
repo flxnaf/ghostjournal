@@ -174,7 +174,7 @@ async function queryMemories(
       nResults: 5
     })
 
-    const memories = results.documents[0]?.map((doc, idx) => ({
+    const memories = results.documents[0]?.map((doc: any, idx: number) => ({
       content: doc,
       metadata: results.metadatas[0]?.[idx],
       distance: results.distances?.[0]?.[idx]

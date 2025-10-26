@@ -303,7 +303,9 @@ export default function CloneChat({ userId }: CloneChatProps) {
               document.body.appendChild(playBtn)
               
               playBtn.onclick = async () => {
-                await audioContext.resume()
+                if (audioContextRef.current) {
+                  await audioContextRef.current.resume()
+                }
                 await audio.play()
                 document.body.removeChild(playBtn)
               }

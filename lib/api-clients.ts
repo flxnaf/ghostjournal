@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { ChromaClient } from 'chromadb'
+// ChromaDB disabled for hackathon
+// import { ChromaClient } from 'chromadb'
 import axios, { AxiosInstance } from 'axios'
 
 /**
@@ -16,24 +17,31 @@ export function getAnthropicClient(): Anthropic | null {
   return new Anthropic({ apiKey })
 }
 
-// ChromaDB Client
+// ChromaDB Client (disabled for hackathon)
+type ChromaClient = any
 export async function getChromaClient(): Promise<ChromaClient | null> {
-  try {
-    const host = process.env.CHROMA_HOST || 'localhost'
-    const port = process.env.CHROMA_PORT || '8000'
-    
-    const client = new ChromaClient({
-      path: `http://${host}:${port}`
-    })
-    
-    // Test connection
-    await client.heartbeat()
-    
-    return client
-  } catch (error) {
-    console.warn('ChromaDB not available:', error)
-    return null
-  }
+  // ChromaDB disabled for hackathon - using mock memory storage
+  console.warn('ChromaDB disabled, using mock memory storage')
+  return null
+  
+  // Uncomment below to enable ChromaDB:
+  // try {
+  //   const { ChromaClient } = await import('chromadb')
+  //   const host = process.env.CHROMA_HOST || 'localhost'
+  //   const port = process.env.CHROMA_PORT || '8000'
+  //   
+  //   const client = new ChromaClient({
+  //     path: `http://${host}:${port}`
+  //   })
+  //   
+  //   // Test connection
+  //   await client.heartbeat()
+  //   
+  //   return client
+  // } catch (error) {
+  //   console.warn('ChromaDB not available:', error)
+  //   return null
+  // }
 }
 
 // Fish Audio Client
