@@ -17,18 +17,13 @@ interface UploaderProps {
   onComplete: (userId: string) => void
 }
 
-const PHOTO_LABELS = ['Front', 'Left', 'Right', 'Up', 'Down']
+const PHOTO_LABELS = ['Front']
 
 export default function Uploader({ audioBlob, userId, voiceTraining, onComplete }: UploaderProps) {
-  const [photos, setPhotos] = useState<(File | null)[]>([null, null, null, null, null])
+  const [photos, setPhotos] = useState<(File | null)[]>([null])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [processingFace, setProcessingFace] = useState(false)
-  const [contexts, setContexts] = useState({
-    story: '',
-    habit: '',
-    reaction: ''
-  })
   const [captureMode, setCaptureMode] = useState(false)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   
@@ -99,14 +94,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
             newPhotos[currentPhotoIndex] = file
             setPhotos(newPhotos)
             
-            // Move to next photo or finish
-            if (currentPhotoIndex < 4) {
-              console.log('➡️ Moving to next photo:', currentPhotoIndex + 2)
-              setCurrentPhotoIndex(currentPhotoIndex + 1)
-            } else {
-              console.log('🎉 All photos captured!')
-              stopCamera()
-            }
+            // Since we only need 1 photo, finish immediately
+            console.log('🎉 Photo captured!')
+            stopCamera()
           }
         }, 'image/jpeg', 0.9)
       }
@@ -131,7 +121,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
   const handleSubmit = async () => {
     // Validate
     if (photos.some(p => !p)) {
-      alert('Please capture or upload all 5 photos')
+      alert('Please capture or upload your photo')
       return
     }
 
@@ -254,18 +244,17 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
       setProcessingFace(false)
       setProgress(50)
 
-      console.log('📤 Step 3: Uploading face data and contexts...')
+      console.log('📤 Step 3: Uploading face data...')
 
-      // Send personalized face contours and contexts to API
+      // Send personalized face contours to API
       const response = await axios.post('/api/update-user', {
         userId,
-        faceContours: personalizedFace,
-        contexts
+        faceContours: personalizedFace
       }, {
         headers: { 'Content-Type': 'application/json' }
       })
 
-      console.log('✅ Face model and context uploaded!')
+      console.log('✅ Face model uploaded!')
       setProgress(100)
       
       // Brief pause to show completion, then proceed
@@ -291,10 +280,10 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
           /* Initial State - Show Start Button */
           <div className="text-center space-y-6">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Capture 5 Selfies
+              Capture Your Photo
             </h2>
             <p className="text-gray-400 mb-4">
-              We'll guide you through capturing 5 photos from different angles
+              Take a clear front-facing photo of yourself
             </p>
             
             {/* Consent Notice */}
@@ -310,28 +299,26 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               </p>
             </div>
             
-            {/* Preview of captured photos */}
-            <div className="grid grid-cols-5 gap-4 mb-8">
-              {PHOTO_LABELS.map((label, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="aspect-square bg-dark-bg rounded-lg border-2 border-dark-border 
-                                flex items-center justify-center mb-2 overflow-hidden">
-                    {photos[idx] ? (
-                      <img
-                        src={URL.createObjectURL(photos[idx]!)}
-                        alt={label}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">{label}</p>
+            {/* Preview of captured photo */}
+            <div className="flex justify-center mb-8">
+              <div className="text-center">
+                <div className="w-64 h-64 bg-dark-bg rounded-lg border-2 border-dark-border 
+                              flex items-center justify-center mb-2 overflow-hidden">
+                  {photos[0] ? (
+                    <img
+                      src={URL.createObjectURL(photos[0]!)}
+                      alt="Your photo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg className="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
                 </div>
-              ))}
+                <p className="text-sm text-gray-500">Front Photo</p>
+              </div>
             </div>
 
             <motion.button
@@ -354,25 +341,11 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               animate={{ opacity: 1, y: 0 }}
               className="text-center"
             >
-              <div className="flex items-center justify-center gap-2 mb-4">
-                {[0, 1, 2, 3, 4].map((idx) => (
-                  <div
-                    key={idx}
-                    className={`h-2 rounded-full transition-all ${
-                      idx < currentPhotoIndex
-                        ? 'w-8 bg-green-500'
-                        : idx === currentPhotoIndex
-                        ? 'w-12 bg-white'
-                        : 'w-8 bg-gray-700'
-                    }`}
-                  />
-                ))}
-              </div>
               <h2 className="text-4xl font-bold text-white mb-2">
-                {PHOTO_LABELS[currentPhotoIndex]} View
+                Look at the Camera
               </h2>
               <p className="text-lg text-gray-400">
-                Photo {currentPhotoIndex + 1} of 5
+                Position your face in the center
               </p>
             </motion.div>
 
@@ -402,17 +375,12 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               
               {/* Direction instruction - BIG AND CLEAR */}
               <motion.div 
-                key={`instruction-${currentPhotoIndex}`}
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className="absolute top-8 left-1/2 -translate-x-1/2 bg-white text-black 
                           px-8 py-4 rounded-full font-bold text-xl shadow-lg"
               >
-                {PHOTO_LABELS[currentPhotoIndex] === 'Front' && '👤 Look straight ahead'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Left' && '👈 Turn LEFT'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Right' && '👉 Turn RIGHT'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Up' && '👆 Look UP'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Down' && '👇 Look DOWN'}
+                👤 Look straight ahead
               </motion.div>
             </div>
 
@@ -442,60 +410,6 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
             </div>
           </div>
         )}
-      </div>
-
-      {/* Context Input Section */}
-      <div className="bg-dark-surface rounded-lg p-8 glow-border">
-        <h2 className="text-3xl font-bold text-white mb-6">
-          Share Your Context
-        </h2>
-        <p className="text-gray-400 mb-6">
-          Help your clone understand you better by sharing stories, habits, and reactions.
-        </p>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Tell a story about yourself
-            </label>
-            <textarea
-              value={contexts.story}
-              onChange={(e) => setContexts({ ...contexts, story: e.target.value })}
-              rows={3}
-              className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
-                       text-white focus:border-white focus:outline-none"
-              placeholder="e.g., I grew up in a small town and always loved technology..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Describe a daily habit
-            </label>
-            <textarea
-              value={contexts.habit}
-              onChange={(e) => setContexts({ ...contexts, habit: e.target.value })}
-              rows={3}
-              className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
-                       text-white focus:border-white focus:outline-none"
-              placeholder="e.g., Every morning I drink coffee and read tech news..."
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              How do you typically react to challenges?
-            </label>
-            <textarea
-              value={contexts.reaction}
-              onChange={(e) => setContexts({ ...contexts, reaction: e.target.value })}
-              rows={3}
-              className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
-                       text-white focus:border-white focus:outline-none"
-              placeholder="e.g., I stay calm and break problems into smaller pieces..."
-            />
-          </div>
-        </div>
       </div>
 
       {/* Fixed Progress Bar - Bottom Right Corner */}
