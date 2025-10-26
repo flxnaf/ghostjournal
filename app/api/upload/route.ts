@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Upload photos to Supabase Storage (pass authenticated client)
+    // Upload photos to Supabase Storage (uses service role key internally)
     console.log('📤 Uploading photos to Supabase Storage...')
-    const photoUrls = await uploadPhotos(authUser.id, photoBlobs, supabase)
+    const photoUrls = await uploadPhotos(authUser.id, photoBlobs)
     console.log('✅ Photos uploaded:', photoUrls)
 
     // Update user with photo URLs

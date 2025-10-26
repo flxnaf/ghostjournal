@@ -4,6 +4,11 @@ import net.fabricmc.api.ModInitializer
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback
 import org.slf4j.LoggerFactory
 
+/**
+ * Digital Twins Minecraft Mod
+ *
+ * Allows players to import and interact with AI digital twins from the web app
+ */
 object DigitalTwinsMod : ModInitializer {
     const val MOD_ID = "digitaltwins"
     val LOGGER = LoggerFactory.getLogger(MOD_ID)
