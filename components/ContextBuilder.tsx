@@ -44,14 +44,30 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
         }
       }
       
-      // Try database
-      const response = await axios.get(`/api/personality?userId=${userId}`)
-      if (response.data.personalityData) {
-        const personalityData = JSON.parse(response.data.personalityData)
-        setEntries(personalityData.entries || [])
-      }
-    } catch (error) {
+      console.log('📥 Loading context from database...')
+      
+      // Load memories from database (initial contexts + user-added ones)
+      const memoriesResponse = await axios.get(`/api/memory?userId=${userId}`)
+      const memories = memoriesResponse.data.memories || []
+      
+      console.log(`✅ Loaded ${memories.length} memories from database`)
+      
+      // Convert memories to ContextEntry format
+      const contextEntries: ContextEntry[] = memories.map((mem: any) => ({
+        id: mem.id,
+        category: mem.category || 'story',
+        content: mem.content,
+        timestamp: new Date(mem.createdAt)
+      }))
+      
+      setEntries(contextEntries)
+      
+      // Also cache to localStorage for offline access
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(contextEntries))
+      
+    } catch (error: any) {
       console.error('Error loading context:', error)
+      console.error('   Error details:', error.response?.data || error.message)
       
       // Fallback to localStorage for any user
       const cached = localStorage.getItem(STORAGE_KEY)
@@ -72,31 +88,33 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
 
     setSaving(true)
     try {
-      const entry: ContextEntry = {
-        id: `entry_${Date.now()}`,
-        category: newEntry.category,
-        content: newEntry.content,
-        timestamp: new Date()
-      }
-
-      const updatedEntries = [...entries, entry]
-      setEntries(updatedEntries)
-
-      // Save to localStorage (for admin or as backup)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
-      console.log('💾 Saved to localStorage:', STORAGE_KEY)
-
-      // Save to database (skip for admin)
+      console.log('💾 Saving new entry:', newEntry.category)
+      
+      // Save to database first (creates Memory record)
       if (!isAdminUser) {
-        await axios.post('/api/personality', {
+        const response = await axios.post('/api/memory', {
           userId,
-          personalityData: {
-            entries: updatedEntries,
-            lastUpdated: new Date()
-          }
+          content: newEntry.content,
+          category: newEntry.category,
+          action: 'add'
         })
+        
+        console.log('✅ Memory saved to database:', response.data)
+        
+        // Reload all memories to stay in sync with database
+        await loadContext()
       } else {
-        console.log('🔑 Admin mode - skipping database save')
+        // Admin mode: save to localStorage only
+        console.log('🔑 Admin mode - saving to localStorage only')
+        const entry: ContextEntry = {
+          id: `entry_${Date.now()}`,
+          category: newEntry.category,
+          content: newEntry.content,
+          timestamp: new Date()
+        }
+        const updatedEntries = [...entries, entry]
+        setEntries(updatedEntries)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
       }
 
       // Clear form
@@ -112,25 +130,27 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
   }
 
   const deleteEntry = async (id: string) => {
-    const updatedEntries = entries.filter(e => e.id !== id)
-    setEntries(updatedEntries)
-
-    // Save to localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
-
-    // Save to database (skip for admin)
+    console.log('🗑️ Deleting entry:', id)
+    
+    // Delete from database first
     if (!isAdminUser) {
       try {
-        await axios.post('/api/personality', {
-          userId,
-          personalityData: {
-            entries: updatedEntries,
-            lastUpdated: new Date()
-          }
-        })
+        await axios.delete(`/api/memory?userId=${userId}&memoryId=${id}`)
+        console.log('✅ Memory deleted from database')
+        
+        // Reload all memories to stay in sync with database
+        await loadContext()
       } catch (error) {
-        console.error('Error deleting entry:', error)
+        console.error('❌ Error deleting entry:', error)
+        alert('Failed to delete entry. Please try again.')
+        return
       }
+    } else {
+      // Admin mode: delete from localStorage only
+      console.log('🔑 Admin mode - deleting from localStorage only')
+      const updatedEntries = entries.filter(e => e.id !== id)
+      setEntries(updatedEntries)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
     }
   }
 
