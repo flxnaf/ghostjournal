@@ -102,6 +102,56 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
+/**
+ * PUT - Update a specific memory
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const { userId, memoryId, content } = await request.json()
+
+    if (!userId || !memoryId || !content) {
+      return NextResponse.json({ error: 'User ID, Memory ID, and content required' }, { status: 400 })
+    }
+
+    console.log('✏️ PUT /api/memory - Updating memory:', memoryId.substring(0, 20))
+    console.log('   New content length:', content.length)
+
+    // Verify memory belongs to user before updating
+    const memory = await prisma.memory.findUnique({
+      where: { id: memoryId }
+    })
+
+    if (!memory) {
+      return NextResponse.json({ error: 'Memory not found' }, { status: 404 })
+    }
+
+    if (memory.userId !== userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    // Update the memory
+    const updatedMemory = await prisma.memory.update({
+      where: { id: memoryId },
+      data: { content: content.trim() }
+    })
+
+    console.log('✅ Memory updated')
+
+    return NextResponse.json({ 
+      success: true,
+      message: 'Memory updated',
+      memory: updatedMemory
+    })
+
+  } catch (error: any) {
+    console.error('❌ PUT /api/memory error:', error)
+    return NextResponse.json(
+      { error: 'Failed to update memory', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
 export async function POST(request: NextRequest) {
   console.log('💾 POST /api/memory called')
   try {

@@ -26,12 +26,69 @@ class TwinChatScreen(
     private lateinit var sendButton: ButtonWidget
     private val chatHistory = mutableListOf<String>()
     private var isWaitingForResponse = false
+    
+    companion object {
+        // Store chat history per twin to persist across screen opens
+        private val chatHistories = mutableMapOf<String, MutableList<String>>()
+    }
+    
+    /**
+     * Wrap text to fit within screen width, handling Minecraft color codes
+     */
+    private fun wrapText(text: String, maxWidth: Int): List<String> {
+        // Extract color code prefix (e.g., "§b[Felix]§f ")
+        val colorCodeRegex = Regex("(§[0-9a-fklmnor])+")
+        var currentColorCodes = ""
+        
+        val words = text.split(" ")
+        val lines = mutableListOf<String>()
+        var currentLine = ""
+        
+        for (word in words) {
+            // Track color codes in this word
+            if (word.contains("§")) {
+                colorCodeRegex.findAll(word).forEach { match ->
+                    currentColorCodes = match.value
+                }
+            }
+            
+            val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+            // Strip color codes for width measurement
+            val visibleText = testLine.replace(colorCodeRegex, "")
+            val width = textRenderer.getWidth(visibleText)
+            
+            if (width > maxWidth) {
+                if (currentLine.isNotEmpty()) {
+                    lines.add(currentLine)
+                    // Start new line with inherited color codes
+                    currentLine = currentColorCodes + word.replace(colorCodeRegex, "")
+                } else {
+                    // Single word too long, just add it
+                    lines.add(word)
+                }
+            } else {
+                currentLine = testLine
+            }
+        }
+        
+        if (currentLine.isNotEmpty()) {
+            lines.add(currentLine)
+        }
+        
+        return lines
+    }
 
     override fun init() {
         super.init()
 
         val twinData = TwinStorage.getTwinByName(twinName)
         val displayName = twinData?.display_name ?: twinName
+        
+        println("🎭 TwinChatScreen.init()")
+        println("   twinName: $twinName")
+        println("   twinId: $twinId")
+        println("   displayName: $displayName")
+        println("   apiEndpoint: $apiEndpoint")
 
         // Input field at bottom
         inputField = TextFieldWidget(
@@ -59,9 +116,17 @@ class TwinChatScreen(
                 .build()
         )
 
-        // Add welcome message
-        chatHistory.add("§b=== Chat with $displayName ===")
-        chatHistory.add("§7Type a message and press Enter or click Send")
+        // Restore previous chat history or create new
+        val persistedHistory = chatHistories[twinName]
+        if (persistedHistory != null) {
+            chatHistory.addAll(persistedHistory)
+            println("✅ Restored ${persistedHistory.size} messages from history")
+        } else {
+            // Add welcome message only for new conversations
+            chatHistory.add("§b=== Chat with $displayName ===")
+            chatHistory.add("§7Type a message and press Enter or click Send")
+            chatHistories[twinName] = chatHistory
+        }
     }
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
@@ -79,13 +144,57 @@ class TwinChatScreen(
             0xFFFFFF
         )
 
-        // Chat history (show last 15 messages)
+        // Chat history with text wrapping
         var y = 50
-        val visibleMessages = chatHistory.takeLast(15)
-        for (message in visibleMessages) {
+        val maxWidth = width - 40 // 20px padding on each side
+        val maxHeight = height - 80 // Leave room for input
+        
+        // Wrap all messages and calculate total lines
+        val wrappedMessages = mutableListOf<String>()
+        for (message in chatHistory) {
+            // Wrap each message to fit screen width
+            val textWidth = textRenderer.getWidth(message.replace(Regex("§[0-9a-fklmnor]"), ""))
+            
+            if (textWidth > maxWidth) {
+                // Message is too long, wrap it
+                val words = message.split(" ")
+                var currentLine = ""
+                var currentColor = ""
+                
+                for (word in words) {
+                    // Track color codes
+                    Regex("(§[0-9a-fklmnor])").findAll(word).forEach { match ->
+                        currentColor = match.value
+                    }
+                    
+                    val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
+                    val visibleWidth = textRenderer.getWidth(testLine.replace(Regex("§[0-9a-fklmnor]"), ""))
+                    
+                    if (visibleWidth > maxWidth && currentLine.isNotEmpty()) {
+                        wrappedMessages.add(currentLine)
+                        currentLine = currentColor + word.replace(Regex("§[0-9a-fklmnor]"), "")
+                    } else {
+                        currentLine = testLine
+                    }
+                }
+                
+                if (currentLine.isNotEmpty()) {
+                    wrappedMessages.add(currentLine)
+                }
+            } else {
+                // Message fits, add as-is
+                wrappedMessages.add(message)
+            }
+        }
+        
+        // Show only lines that fit on screen (from bottom up)
+        val linesPerScreen = maxOf(1, (maxHeight - 50) / 12)
+        val visibleLines = wrappedMessages.takeLast(linesPerScreen)
+        
+        for (line in visibleLines) {
             context.drawTextWithShadow(
                 textRenderer,
-                message,
+                line,
                 20,
                 y,
                 0xFFFFFF
@@ -151,6 +260,10 @@ class TwinChatScreen(
                     val twinData = TwinStorage.getTwinByName(twinName)
                     val displayName = twinData?.display_name ?: twinName
                     chatHistory.add("§b[$displayName]§f ${response.text}")
+                    
+                    println("🔊 Fish Audio Debug:")
+                    println("   response.audioUrl: ${response.audioUrl}")
+                    println("   isEmpty: ${response.audioUrl.isNullOrEmpty()}")
 
                     // Play voice audio if available
                     if (!response.audioUrl.isNullOrEmpty()) {
@@ -160,9 +273,20 @@ class TwinChatScreen(
                             val baseUrl = apiEndpoint.replace("/api/speak", "")
                             "$baseUrl${response.audioUrl}"
                         }
-
-                        chatHistory.add("§a🔊 Playing voice...")
-                        TwinAudioPlayer.enqueue(fullAudioUrl)
+                        
+                        println("   fullAudioUrl: $fullAudioUrl")
+                        chatHistory.add("§a♪ Playing voice...")
+                        
+                        try {
+                            TwinAudioPlayer.playAudioFromUrl(fullAudioUrl)
+                            println("   ✅ Audio playback started")
+                        } catch (e: Exception) {
+                            println("   ❌ Audio playback failed: ${e.message}")
+                            chatHistory.add("§c✗ Audio playback failed")
+                        }
+                    } else {
+                        println("   ⚠️ No audio URL provided")
+                        chatHistory.add("§7(No voice audio)")
                     }
 
                     isWaitingForResponse = false

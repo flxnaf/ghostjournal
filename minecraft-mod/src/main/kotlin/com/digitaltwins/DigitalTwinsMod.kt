@@ -19,18 +19,25 @@ object DigitalTwinsMod : ModInitializer {
     val LOGGER = LoggerFactory.getLogger(MOD_ID)
 
     override fun onInitialize() {
-        LOGGER.info("Digital Twins Mod initialized!")
+        LOGGER.info("Digital Twins Mod initializing...")
 
-        // Register MVP Mode commands
+        // Register Advanced Edition features FIRST
+        LOGGER.info("Step 1: Registering entities...")
+        ModEntities.register()
+        
+        LOGGER.info("Step 2: Registering items...")
+        ModItems.register()
+        
+        LOGGER.info("Step 3: Registering network packets...")
+        PacketHandler.registerServer()
+
+        // Register MVP Mode commands AFTER entities are registered
+        LOGGER.info("Step 4: Registering commands...")
         CommandRegistrationCallback.EVENT.register { dispatcher, _, _ ->
             TwinCommands.register(dispatcher)
         }
 
-        // Register Advanced Edition features
-        ModEntities.register()
-        ModItems.register()
-        PacketHandler.registerServer()
-
-        LOGGER.info("Digital Twins Mod loaded successfully!")
+        LOGGER.info("✅ Digital Twins Mod loaded successfully!")
+        LOGGER.warn("⚠️ Note: Entity attributes not fully registered - this may cause spawn issues")
     }
 }

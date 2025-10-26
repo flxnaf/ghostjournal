@@ -23,10 +23,26 @@ class TwinRenderer(context: EntityRendererFactory.Context) :
      * Uses user's Minecraft skin if linked, otherwise Steve
      */
     override fun getTexture(entity: TwinEntity): Identifier {
+        // Debug output
+        println("🎨 TwinRenderer.getTexture() called")
+        println("   Entity: ${entity.twinDisplayName}")
+        println("   Skin URL: ${entity.minecraftSkinUrl ?: "NULL"}")
+        
         // Use Minecraft skin if available, fallback to Steve
-        return SkinCache.getSkin(
-            entity.minecraftSkinUrl,
-            entity.twinName
-        )
+        return try {
+            val skinId = SkinCache.getSkin(
+                entity.minecraftSkinUrl,
+                entity.twinName
+            )
+            println("   Returning texture: $skinId")
+            skinId
+        } catch (e: Exception) {
+            println("❌ Failed to get skin for ${entity.twinName}: ${e.message}")
+            e.printStackTrace()
+            // Return Steve as absolute fallback
+            val fallback = Identifier("minecraft", "textures/entity/player/wide/steve.png")
+            println("   Using fallback: $fallback")
+            fallback
+        }
     }
 }

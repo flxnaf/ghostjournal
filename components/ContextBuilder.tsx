@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
-import { Download, Heart, BookOpen, RotateCcw, Smile, Target, Brain, Trophy, Star } from 'lucide-react'
+import { Download, Heart, BookOpen, RotateCcw, Smile, Target, Brain, Trophy, Star, Edit, Check, X } from 'lucide-react'
 
 interface ContextBuilderProps {
   userId: string
@@ -22,6 +22,10 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
   const [newEntry, setNewEntry] = useState({ category: 'story', content: '' })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  
+  // Edit state
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
   
   // Check if user is admin
   const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
@@ -198,6 +202,69 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
       const updatedEntries = entries.filter(e => e.id !== id)
       setEntries(updatedEntries)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
+    }
+  }
+
+  const startEdit = (entry: ContextEntry) => {
+    console.log('✏️ Starting edit for entry:', entry.id)
+    setEditingId(entry.id)
+    setEditContent(entry.content)
+  }
+
+  const cancelEdit = () => {
+    console.log('❌ Canceling edit')
+    setEditingId(null)
+    setEditContent('')
+  }
+
+  const saveEdit = async (id: string) => {
+    if (!editContent.trim()) {
+      alert('Content cannot be empty')
+      return
+    }
+
+    console.log('💾 Saving edit for entry:', id)
+    setSaving(true)
+    
+    try {
+      if (!isAdminUser) {
+        // Update in database
+        await axios.put('/api/memory', {
+          userId,
+          memoryId: id,
+          content: editContent
+        })
+        console.log('✅ Memory updated in database')
+        
+        // IMMEDIATELY regenerate personality with updated entry
+        console.log('🔄 Regenerating personality after edit...')
+        await axios.post('/api/personality', {
+          userId
+        })
+        console.log('✅ Personality regenerated!')
+        
+        // Reload all memories to stay in sync with database
+        await loadContext()
+      } else {
+        // Admin mode: update in localStorage
+        console.log('🔑 Admin mode - updating localStorage only')
+        const updatedEntries = entries.map(e => 
+          e.id === id ? { ...e, content: editContent } : e
+        )
+        setEntries(updatedEntries)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
+      }
+      
+      // Clear edit state
+      setEditingId(null)
+      setEditContent('')
+    } catch (error: any) {
+      console.error('❌ Error saving edit:', error)
+      console.error('   Error response:', error.response?.data)
+      const errorMsg = error.response?.data?.details || error.message || 'Unknown error'
+      alert(`Failed to save changes: ${errorMsg}`)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -393,15 +460,58 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
                       {new Date(entry.timestamp).toLocaleDateString()}
                     </span>
                   </div>
-                  <button
-                    onClick={() => deleteEntry(entry.id)}
-                    className="text-gray-500 hover:text-red-500 transition-colors"
-                    title="Delete entry"
-                  >
-                    ✕
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {editingId === entry.id ? (
+                      <>
+                        <button
+                          onClick={() => saveEdit(entry.id)}
+                          disabled={saving}
+                          className="text-green-500 hover:text-green-400 transition-colors disabled:opacity-50"
+                          title="Save changes"
+                        >
+                          <Check className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          disabled={saving}
+                          className="text-gray-500 hover:text-gray-400 transition-colors disabled:opacity-50"
+                          title="Cancel editing"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => startEdit(entry)}
+                          className="text-blue-500 hover:text-blue-400 transition-colors"
+                          title="Edit entry"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => deleteEntry(entry.id)}
+                          className="text-gray-500 hover:text-red-500 transition-colors"
+                          title="Delete entry"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p className="text-white leading-relaxed">{entry.content}</p>
+                {editingId === entry.id ? (
+                  <textarea
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    rows={4}
+                    disabled={saving}
+                    className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
+                             text-white focus:border-white focus:outline-none disabled:opacity-50"
+                  />
+                ) : (
+                  <p className="text-white leading-relaxed">{entry.content}</p>
+                )}
               </motion.div>
             ))}
           </div>
