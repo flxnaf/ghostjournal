@@ -25,15 +25,26 @@ This guide will help you set up Supabase Storage buckets for GhostJournal.
 > - Photos can be displayed in the 3D avatar
 > - However, upload/delete permissions are still protected by RLS policies
 
-### Step 2: Set Up Storage Policies (Optional but Recommended)
+### Step 2: Set Up Storage Policies
 
 Storage policies ensure users can only upload/delete files in their own folders.
 
+#### Method 1: Fresh Setup (Recommended)
+If this is your first time setting up policies:
+
 1. Go to **Supabase Dashboard** → **SQL Editor**
 2. Click **"New query"**
-3. Copy the contents of `storage-policies.sql` (in this folder)
+3. Copy the contents of `storage-policies-fix.sql` (in this folder)
 4. Paste into the SQL editor
 5. Click **"Run"** or press `Ctrl+Enter`
+
+#### Method 2: Quick Development Mode (Disable RLS)
+If you're getting RLS errors and want to develop quickly:
+
+1. Go to **SQL Editor**
+2. Run the contents of `disable-rls-dev.sql`
+3. ⚠️ **This is insecure** - only for local development!
+4. Before production, run `enable-rls-prod.sql` then `storage-policies-fix.sql`
 
 **What these policies do:**
 - ✅ Anyone can **view/download** files (public read)
@@ -96,6 +107,37 @@ After setup, test the storage:
 
 ## Troubleshooting
 
+### ❌ RLS Error: "new row violates row-level security policy"
+
+This is the most common error. You have two options:
+
+#### Option A: Quick Fix (Development Only)
+Disable RLS completely for fast development:
+
+1. Go to **SQL Editor**
+2. Run: `disable-rls-dev.sql`
+3. This turns off security (DO NOT use in production!)
+
+#### Option B: Fix Policies (Recommended for Production)
+Keep RLS enabled but fix the policies:
+
+1. Go to **SQL Editor**
+2. Run: `storage-policies-fix.sql`
+3. This drops and recreates all policies
+4. Verify: Check Storage → Bucket → Policies tab (should see 4 policies per bucket)
+
+**Debugging RLS Issues:**
+
+Check if policies exist:
+```sql
+SELECT schemaname, tablename, policyname, permissive, roles, cmd
+FROM pg_policies
+WHERE tablename = 'objects'
+ORDER BY policyname;
+```
+
+Should return 8 policies (4 for each bucket). If it returns 0, the policies weren't created.
+
 ### "Bucket not found" errors
 - Make sure bucket names are **exactly**: `audio-recordings` and `user-photos`
 - Check they are created in the correct Supabase project
@@ -104,11 +146,13 @@ After setup, test the storage:
 - Verify buckets are marked as **Public**
 - Make sure you ran the storage policies SQL script
 - Check that the user is authenticated (logged in)
+- Try running `storage-policies-fix.sql` to recreate policies
 
 ### Files not uploading
 - Check browser console for errors
 - Verify `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY` are set
 - Check Supabase Dashboard → Logs for more details
+- Verify you're logged in when uploading
 
 ### Files upload but can't be accessed
 - Verify buckets are **Public**

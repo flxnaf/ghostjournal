@@ -53,3 +53,32 @@ next-env.d.ts
 # Test scripts with hardcoded API keys (NEVER commit these!)
 test_fish*.sh
 
+# Gradle (Minecraft mod build artifacts)
+minecraft-mod/.gradle/
+minecraft-mod/build/
+minecraft-mod/.gradle/build/
+minecraft-mod/*.jar
+minecraft-mod/gradle/build/
+.gradle/
+.gradletasknamecache
+
+# Python cache (for scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Supabase local (if running locally)
+.supabase/
+
+# macOS additional files
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+
+# Additional sensitive file types
+*.key
+*.p12
+
