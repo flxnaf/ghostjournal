@@ -305,6 +305,10 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
           onCreateCharacter={() => setView('character')}
           onBrowseClones={() => setView('browse')}
           onLogout={logout}
+          onReRecordVoice={() => {
+            setView('character')
+            handleReRecord()
+          }}
         />
       )}
 
