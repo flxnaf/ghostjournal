@@ -25,6 +25,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
+    console.log('🔍 GET /api/personality - userId:', userId)
+    console.log('   Type:', typeof userId, '| Length:', userId.length)
+
+    // Validate UUID format (8-4-4-4-12 hex characters)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(userId)) {
+      console.error('❌ Invalid UUID format received:', userId)
+      console.error('   First 20 chars:', userId.substring(0, 20))
+      return NextResponse.json(
+        { 
+          error: 'Invalid user ID format', 
+          details: `Expected UUID, got: ${userId.substring(0, 50)}`,
+          hint: 'Check that clone.userId (not username) is being passed'
+        },
+        { status: 400 }
+      )
+    }
+
     // Admin bypass
     const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
     if (isAdminUser) {

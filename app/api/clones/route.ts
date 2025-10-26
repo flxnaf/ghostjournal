@@ -52,6 +52,14 @@ export async function GET(request: NextRequest) {
     }))
 
     console.log(`✅ Returning ${clones.length} public clones`)
+    
+    // Debug: Log each clone's ID format
+    clones.forEach((clone, i) => {
+      console.log(`   Clone ${i + 1}: @${clone.username}`)
+      console.log(`      userId: ${clone.userId}`)
+      console.log(`      type: ${typeof clone.userId} | length: ${clone.userId?.length}`)
+    })
+    
     return NextResponse.json({ clones })
   } catch (error: any) {
     console.error('❌ Error fetching clones:', error)
