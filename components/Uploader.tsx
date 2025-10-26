@@ -274,14 +274,13 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
 
       console.log('📤 Step 3: Uploading face data, photo, and initial context...')
 
-      // Upload the front photo to Supabase Storage
-      const frontPhoto = photos[0] // Front-facing photo
+      // Upload the front photo to Supabase Storage (reuse frontPhoto from line 205)
       let photoUrl = null
       
-      if (frontPhoto) {
+      if (validPhotos[0]) {
         console.log('📸 Uploading profile photo to Supabase...')
         const formData = new FormData()
-        formData.append('photo', frontPhoto)
+        formData.append('photo', validPhotos[0])
         formData.append('userId', userId)
         
         try {
