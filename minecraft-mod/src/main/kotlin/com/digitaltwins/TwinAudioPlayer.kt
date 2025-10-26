@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.BufferedInputStream
 import java.net.URL
+import java.util.ArrayDeque
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioInputStream
 import javax.sound.sampled.AudioSystem
@@ -17,18 +18,38 @@ import javax.sound.sampled.DataLine
  */
 object TwinAudioPlayer {
     private var currentClip: Clip? = null
+    private val queue = ArrayDeque<String>()
+    private var isPlaying = false
 
     /**
      * Play audio from a URL (MP3 from Fish Audio API)
      */
-    fun playAudioFromUrl(audioUrl: String) {
-        // Stop any currently playing audio
+    fun enqueue(audioUrl: String) {
+        synchronized(queue) {
+            queue.addLast(audioUrl)
+            if (!isPlaying) {
+                isPlaying = true
+                playNext()
+            }
+        }
+    }
+
+    private fun playNext() {
+        val nextUrl: String? = synchronized(queue) {
+            if (queue.isEmpty()) null else queue.removeFirst()
+        }
+
+        if (nextUrl == null) {
+            synchronized(queue) { isPlaying = false }
+            return
+        }
+
         stopCurrentAudio()
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                println("🔊 Downloading audio from: $audioUrl")
-                val url = URL(audioUrl)
+                println("🔊 Downloading audio from: $nextUrl")
+                val url = URL(nextUrl)
 
                 BufferedInputStream(url.openStream()).use { bufferedStream ->
                     val rawStream = AudioSystem.getAudioInputStream(bufferedStream)
@@ -93,9 +114,11 @@ object TwinAudioPlayer {
                 println("✅ Audio playback complete")
 
             } catch (e: Exception) {
-                println("❌ Audio playback failed: ${e.message}")
+                println("❌ Audio playback failed for $nextUrl: ${e.message}")
                 e.printStackTrace()
                 stopCurrentAudio()
+            } finally {
+                playNext()
             }
         }
     }
