@@ -53,7 +53,7 @@ export default function CloneTabs({ userId, currentUserId, isOwner = true, owner
           }`}
           >
             <MessageCircle className="w-5 h-5 inline-block mr-2" />
-            Chat with Clone
+            {ownerName ? `Chat with ${ownerName}'s Clone` : 'Chat with Clone'}
             {activeTab === 'chat' && (
             <motion.div
               layoutId="activeTab"

@@ -28,16 +28,29 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
   console.log('   ownerName:', ownerName)
   console.log('   Is browsing another user:', !!ownerName)
   
-  const initialMessage = ownerName 
-    ? `Hey! I'm ${ownerName}'s clone. Talk to me like you're talking to ${ownerName}- I'll respond exactly how they would.`
-    : "Hey! I'm your clone. Talk to me like you're talking to yourself - I'll respond exactly how YOU would."
+  // Generate initial message based on ownerName
+  const getInitialMessage = () => {
+    return ownerName 
+      ? `Hey! I'm ${ownerName}'s clone. Talk to me like you're talking to ${ownerName}- I'll respond exactly how they would.`
+      : "Hey! I'm your clone. Talk to me like you're talking to yourself - I'll respond exactly how YOU would."
+  }
   
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: initialMessage
+      content: getInitialMessage()
     }
   ])
+  
+  // Update initial message when ownerName changes
+  useEffect(() => {
+    setMessages([
+      {
+        role: 'assistant',
+        content: getInitialMessage()
+      }
+    ])
+  }, [ownerName])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
