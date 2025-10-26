@@ -190,27 +190,70 @@ ls build/libs/digitaltwins-1.0.0.jar
 
 ## 📊 API Endpoints
 
-### Export API
-**GET** `/api/minecraft/export/[userId]`
+### Export API (Web App)
+**Download Clone JSON** - Click "Export JSON" button in the web app
 
-**Response:**
+**Downloaded File:** `username_clone.json`
+
+**Structure:**
 ```json
 {
-  "twin_id": "abc-123",
-  "name": "Alex",
-  "display_name": "Alex Chen",
-  "api_endpoint": "https://yourapp.com/api/speak",
-  "created_at": "2025-10-26T00:00:00Z"
+  "userId": "b9f8b510-a463-4232-9490-9679300453c1",
+  "exportDate": "2025-10-26T12:34:56.789Z",
+  
+  "context": {
+    "entries": [
+      {
+        "category": "story",
+        "content": "I love spicy ramen and coding",
+        "timestamp": "2025-10-26T12:00:00.000Z"
+      }
+    ],
+    "totalEntries": 5,
+    "categories": ["story", "habit", "preference"]
+  },
+  
+  "audioData": {
+    "audioUrl": null,
+    "voiceModelId": "d7dfbedf1d39421a948a302839a86ba9",
+    "voiceModelProvider": "fish-audio",
+    "usage": {
+      "description": "Use voiceModelId to make Fish Audio API calls",
+      "apiEndpoint": "https://api.fish.audio/v1/tts",
+      "requiredFields": ["text", "reference_id (voiceModelId)", "format"]
+    }
+  },
+  
+  "faceData": { ... },
+  
+  "metadata": {
+    "name": "Alex Chen",
+    "username": "alexc",
+    "email": "alex@example.com",
+    "createdAt": "2025-10-25T00:00:00.000Z",
+    "minecraftIntegration": {
+      "howToUse": "See MINECRAFT_INTEGRATION.md in the Replik repo",
+      "apiUrl": "https://replik.tech/api/speak",
+      "requiresInternet": true
+    }
+  }
 }
 ```
 
-### Speak API
+### Key Fields for Minecraft:
+
+1. **`userId`** - Use this for API calls to `/api/speak`
+2. **`voiceModelId`** - Use this for direct Fish Audio TTS calls
+3. **`context.entries`** - The clone's personality data
+4. **`metadata.apiUrl`** - Where to send chat messages
+
+### Speak API (For Chat)
 **POST** `/api/speak`
 
 **Request:**
 ```json
 {
-  "userId": "abc-123",
+  "userId": "b9f8b510-a463-4232-9490-9679300453c1",
   "message": "Hey, how are you?"
 }
 ```
@@ -219,10 +262,100 @@ ls build/libs/digitaltwins-1.0.0.jar
 ```json
 {
   "text": "Pretty good! Working on a new project.",
-  "audioUrl": "/uploads/abc-123/response_456.mp3",
+  "audioUrl": "https://ehxprwfkqnoxsvxljksz.supabase.co/storage/v1/object/public/audio-recordings/abc-123/response_456.mp3",
   "success": true
 }
 ```
+
+**Important:** This endpoint uses the clone's personality + Fish Audio voice model automatically!
+
+---
+
+## 🎤 Fish Audio API Integration
+
+### Option 1: Use Replik's `/api/speak` Endpoint (Recommended)
+This is the easiest way - just send the `userId` and the API handles everything:
+- Fetches personality context
+- Generates AI response with Claude
+- Synthesizes voice with Fish Audio
+- Returns text + audio URL
+
+**Example:**
+```kotlin
+val response = httpClient.post("https://replik.tech/api/speak") {
+    contentType(ContentType.Application.Json)
+    setBody("""{"userId":"$userId","message":"$message"}""")
+}
+// Response includes audioUrl ready to play!
+```
+
+### Option 2: Direct Fish Audio API Calls (Advanced)
+If you want to generate voice for custom text (not AI responses):
+
+**Endpoint:** `https://api.fish.audio/v1/tts`
+
+**Headers:**
+```
+Authorization: Bearer YOUR_FISH_AUDIO_API_KEY
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "text": "Hello from Minecraft!",
+  "reference_id": "d7dfbedf1d39421a948a302839a86ba9",
+  "format": "mp3",
+  "mp3_bitrate": 128,
+  "opus_bitrate": -1000,
+  "latency": "normal"
+}
+```
+
+**Parameters:**
+- `text` - The text to speak
+- `reference_id` - The `voiceModelId` from your clone's JSON
+- `format` - Audio format (`mp3`, `wav`, `opus`, `flac`)
+- `latency` - `normal` or `balanced` (normal = better quality)
+
+**Response:**
+Binary audio data (MP3 file)
+
+**Example (Kotlin):**
+```kotlin
+val voiceModelId = "d7dfbedf1d39421a948a302839a86ba9" // From clone JSON
+
+val response = httpClient.post("https://api.fish.audio/v1/tts") {
+    header("Authorization", "Bearer ${System.getenv("FISH_AUDIO_API_KEY")}")
+    contentType(ContentType.Application.Json)
+    setBody("""{
+        "text": "Hello from Minecraft!",
+        "reference_id": "$voiceModelId",
+        "format": "mp3",
+        "latency": "normal"
+    }""")
+}
+
+val audioBytes = response.readBytes()
+// Save to file or play directly
+```
+
+### Where to Get Your Fish Audio API Key
+
+1. Go to [https://fish.audio](https://fish.audio)
+2. Sign up / log in
+3. Navigate to API section
+4. Generate an API key
+5. Add to your environment: `export FISH_AUDIO_API_KEY=your_key_here`
+
+### Which Option Should You Use?
+
+| Use Case | Recommended Approach |
+|----------|---------------------|
+| Chat with AI clone | `/api/speak` endpoint |
+| Custom voice lines | Direct Fish Audio API |
+| Testing voice quality | Direct Fish Audio API |
+| Full clone experience | `/api/speak` endpoint |
 
 ---
 
