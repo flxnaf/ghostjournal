@@ -373,6 +373,13 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
 
       console.log('✅ Critique saved as memory')
       
+      // IMMEDIATELY regenerate personality to include this correction
+      console.log('🔄 Regenerating personality with new correction...')
+      await axios.post('/api/personality', {
+        userId
+      })
+      console.log('✅ Personality regenerated!')
+      
       // Show success message
       alert('✅ Feedback saved! I\'ll respond more accurately next time.')
       

@@ -133,6 +133,13 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
         
         console.log('✅ Memory saved to database:', response.data)
         
+        // IMMEDIATELY regenerate personality with new entry
+        console.log('🔄 Regenerating personality with new entry...')
+        await axios.post('/api/personality', {
+          userId
+        })
+        console.log('✅ Personality regenerated!')
+        
         // Reload all memories to stay in sync with database
         await loadContext()
       } else {
@@ -169,6 +176,13 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
       try {
         await axios.delete(`/api/memory?userId=${userId}&memoryId=${id}`)
         console.log('✅ Memory deleted from database')
+        
+        // IMMEDIATELY regenerate personality without this entry
+        console.log('🔄 Regenerating personality after deletion...')
+        await axios.post('/api/personality', {
+          userId
+        })
+        console.log('✅ Personality regenerated!')
         
         // Reload all memories to stay in sync with database
         await loadContext()

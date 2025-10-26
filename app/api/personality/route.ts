@@ -169,6 +169,23 @@ export async function POST(request: NextRequest) {
     const storiesMem = memories.filter(m => m.category === 'story' || m.category === 'stories').map(m => m.content).join('\n')
     const habitsMem = memories.filter(m => m.category === 'habit' || m.category === 'habits').map(m => m.content).join('\n')
     const reactionsMem = memories.filter(m => m.category === 'reaction' || m.category === 'reactions').map(m => m.content).join('\n')
+    const correctionsMem = memories.filter(m => m.category === 'correction').map(m => m.content).join('\n')
+    const preferencesMem = memories.filter(m => m.category === 'preference').map(m => m.content).join('\n')
+    const skillsMem = memories.filter(m => m.category === 'skill').map(m => m.content).join('\n')
+    const goalsMem = memories.filter(m => m.category === 'goal').map(m => m.content).join('\n')
+    const valuesMem = memories.filter(m => m.category === 'value').map(m => m.content).join('\n')
+    const memoriesMem = memories.filter(m => m.category === 'memory').map(m => m.content).join('\n')
+    
+    console.log('📊 Memory counts by category:')
+    console.log('   Stories:', memories.filter(m => m.category === 'story').length)
+    console.log('   Habits:', memories.filter(m => m.category === 'habit').length)
+    console.log('   Reactions:', memories.filter(m => m.category === 'reaction').length)
+    console.log('   Corrections:', memories.filter(m => m.category === 'correction').length)
+    console.log('   Preferences:', memories.filter(m => m.category === 'preference').length)
+    console.log('   Skills:', memories.filter(m => m.category === 'skill').length)
+    console.log('   Goals:', memories.filter(m => m.category === 'goal').length)
+    console.log('   Values:', memories.filter(m => m.category === 'value').length)
+    console.log('   Memories:', memories.filter(m => m.category === 'memory').length)
     
     // Store the raw contexts directly (no Claude processing)
     // This preserves the exact personality traits like "I am always angry!"
@@ -176,7 +193,13 @@ export async function POST(request: NextRequest) {
       stories: storiesMem || 'N/A',
       habits: habitsMem || 'N/A',
       reactions: reactionsMem || 'N/A',
-      background: `This person's stories: ${storiesMem}. Their habits: ${habitsMem}. How they react: ${reactionsMem}`
+      corrections: correctionsMem || 'N/A',
+      preferences: preferencesMem || 'N/A',
+      skills: skillsMem || 'N/A',
+      goals: goalsMem || 'N/A',
+      values: valuesMem || 'N/A',
+      memories: memoriesMem || 'N/A',
+      background: `This person's stories: ${storiesMem}. Their habits: ${habitsMem}. How they react: ${reactionsMem}. User corrections: ${correctionsMem}. Preferences: ${preferencesMem}. Skills: ${skillsMem}. Goals: ${goalsMem}. Values: ${valuesMem}. Memories: ${memoriesMem}`
     }
     
     console.log('💾 Storing personality data:', personality)
