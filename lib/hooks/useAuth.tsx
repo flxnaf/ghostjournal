@@ -29,9 +29,11 @@ interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
+  isNewlyVerified: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name?: string) => Promise<void>
   logout: () => Promise<void>
+  clearNewlyVerified: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,6 +41,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isNewlyVerified, setIsNewlyVerified] = useState(false)
   const supabase = createClient()
 
   // Helper function to convert Supabase user to our User interface
@@ -85,11 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
-        
+
         if (error) {
           console.error('Error getting session:', error)
         } else if (session?.user) {
           setUser(convertSupabaseUser(session.user))
+
+          // Check if user just verified email (from callback redirect)
+          if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search)
+            if (urlParams.get('verified') === 'true') {
+              setIsNewlyVerified(true)
+              // Clean up URL
+              window.history.replaceState({}, '', window.location.pathname)
+            }
+          }
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error)
@@ -176,8 +189,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     setUser(null)
   }
 
+  const clearNewlyVerified = () => {
+    setIsNewlyVerified(false)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, isNewlyVerified, login, signup, logout, clearNewlyVerified }}>
       {children}
     </AuthContext.Provider>
   )

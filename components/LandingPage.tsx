@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/hooks/useAuth'
+import EmailConfirmation from './EmailConfirmation'
 
 export default function LandingPage() {
   const [showAuth, setShowAuth] = useState(false)
@@ -15,6 +16,8 @@ export default function LandingPage() {
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [adminKey, setAdminKey] = useState('')
   const [clickCount, setClickCount] = useState(0)
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false)
+  const [signupEmail, setSignupEmail] = useState('')
 
   const { login, signup } = useAuth()
 
@@ -26,6 +29,10 @@ export default function LandingPage() {
     try {
       if (isSignup) {
         await signup(email, password, name)
+        // After signup, show email confirmation page
+        setSignupEmail(email)
+        setShowEmailConfirmation(true)
+        setShowAuth(false)
       } else {
         await login(email, password)
       }
@@ -65,6 +72,22 @@ export default function LandingPage() {
       setShowAdminLogin(true)
       setClickCount(0)
     }
+  }
+
+  // Show email confirmation screen if user just signed up
+  if (showEmailConfirmation) {
+    return (
+      <EmailConfirmation
+        email={signupEmail}
+        onBack={() => {
+          setShowEmailConfirmation(false)
+          setShowAuth(false)
+          setEmail('')
+          setPassword('')
+          setName('')
+        }}
+      />
+    )
   }
 
   return (

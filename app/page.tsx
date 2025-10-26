@@ -26,8 +26,8 @@ export default function Home() {
     return <EnvErrorMessage />
   }
   
-  const { user, isLoading, logout } = useAuth()
-  
+  const { user, isLoading, logout, isNewlyVerified, clearNewlyVerified } = useAuth()
+
   // Show landing page if not logged in
   if (isLoading) {
     return (
@@ -36,16 +36,16 @@ export default function Home() {
       </div>
     )
   }
-  
+
   if (!user) {
     return <LandingPage />
   }
-  
+
   // Main app for logged-in users
-  return <AuthenticatedApp user={user} logout={logout} />
+  return <AuthenticatedApp user={user} logout={logout} isNewlyVerified={isNewlyVerified} clearNewlyVerified={clearNewlyVerified} />
 }
 
-function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
+function AuthenticatedApp({ user, logout, isNewlyVerified, clearNewlyVerified }: { user: any, logout: () => void, isNewlyVerified: boolean, clearNewlyVerified: () => void }) {
   const [showConsent, setShowConsent] = useState(false)
   const [consentGiven, setConsentGiven] = useState(false)
   const [view, setView] = useState<'dashboard' | 'character' | 'browse'>('dashboard')
@@ -94,6 +94,14 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
 
   // Check if user has already given consent and if they have audio
   useEffect(() => {
+    // If user just verified email, force show consent dialog
+    if (isNewlyVerified) {
+      console.log('✨ User just verified email - showing consent dialog')
+      setShowConsent(true)
+      setConsentGiven(false)
+      return
+    }
+
     // Skip consent for admin bypass users
     const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
     if (isAdminBypass) {
@@ -101,7 +109,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       setConsentGiven(true)
       return
     }
-    
+
     const checkConsentAndData = async () => {
       console.log('🔍 Checking consent for user:', user.id)
       try {
@@ -110,12 +118,12 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         if (response.data.hasConsent) {
           console.log('✅ User has consent, setting consentGiven=true')
           setConsentGiven(true)
-          
+
           // Check if user already has audio and skip recording
           try {
             const userDataResponse = await axios.get(`/api/personality?userId=${user.id}`)
             const userData = userDataResponse.data
-            
+
             if (userData.audioUrl) {
               console.log('✅ User already has audio, skipping to chat')
               setUserId(user.id)
@@ -139,7 +147,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       }
     }
     checkConsentAndData()
-  }, [user.id])
+  }, [user.id, isNewlyVerified])
 
   const handleConsentAccept = async (consent: {
     audio: boolean
@@ -154,6 +162,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       })
       setConsentGiven(true)
       setShowConsent(false)
+      clearNewlyVerified() // Clear the verification flag to prevent showing consent again
     } catch (error) {
       console.error('Failed to save consent:', error)
       alert('Failed to save consent. Please try again.')
