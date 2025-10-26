@@ -305,23 +305,40 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         <Dashboard
           user={user}
           onCreateCharacter={async () => {
+            console.log('🎯 Edit Character clicked!')
+            console.log('   Current user.id:', user.id)
+            console.log('   Current step:', step)
+            console.log('   Current userId state:', userId)
+            
             // Check if user already has audio - if so, skip to CloneTabs
             try {
+              console.log('🔍 Checking if user has audio via /api/personality...')
               const userDataResponse = await axios.get(`/api/personality?userId=${user.id}`)
               const userData = userDataResponse.data
+              
+              console.log('📦 /api/personality response:')
+              console.log('   Full data:', userData)
+              console.log('   audioUrl:', userData.audioUrl)
+              console.log('   voiceModelId:', userData.voiceModelId)
+              console.log('   Has audio?:', !!userData.audioUrl)
               
               if (userData.audioUrl) {
                 console.log('✅ User has audio - going to CloneTabs')
                 setUserId(user.id)
                 setStep('chat')
               } else {
-                console.log('⚠️ User has no audio - starting at record step')
+                console.log('⚠️ User has NO audio - starting at record step')
                 setStep('record')
               }
-            } catch (err) {
-              console.log('⚠️ Could not check audio, starting at record step')
+            } catch (err: any) {
+              console.error('❌ Error checking audio:', err)
+              console.error('   Error message:', err.message)
+              console.error('   Error response:', err.response?.data)
+              console.log('⚠️ Defaulting to record step due to error')
               setStep('record')
             }
+            
+            console.log('🎬 Setting view to character...')
             setView('character')
           }}
           onBrowseClones={() => setView('browse')}
