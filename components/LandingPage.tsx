@@ -43,6 +43,7 @@ export default function LandingPage() {
       const adminUser = {
         id: 'admin-' + Date.now(),
         email: 'admin@ghostjournal.local',
+        username: 'admin',
         name: 'Admin User',
         createdAt: new Date().toISOString()
       }

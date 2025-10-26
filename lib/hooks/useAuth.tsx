@@ -22,6 +22,7 @@ interface User {
   id: string
   email: string
   name?: string
+  username?: string
   createdAt: string
 }
 
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     id: supabaseUser.id,
     email: supabaseUser.email || '',
     name: supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name,
+    username: supabaseUser.user_metadata?.username,
     createdAt: supabaseUser.created_at
   })
 
@@ -114,12 +116,20 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }, [supabase.auth])
 
   const signup = async (email: string, password: string, name?: string) => {
+    // For admin bypass, name is actually the username
+    const username = name
+    const displayName = email // In signup form, we swapped these
+    
+    // Create email from username if not provided
+    const userEmail = displayName && displayName.includes('@') ? displayName : `${username}@ghostjournal.local`
+    
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: userEmail,
       password,
       options: {
         data: {
-          name: name
+          username: username,
+          name: displayName || username
         }
       }
     })
@@ -129,13 +139,19 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     }
 
     if (data.user) {
-      setUser(convertSupabaseUser(data.user))
+      const user = convertSupabaseUser(data.user)
+      user.username = username
+      setUser(user)
     }
   }
 
-  const login = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+  const login = async (emailOrUsername: string, password: string) => {
+    // Determine if input is email or username
+    const isEmail = emailOrUsername.includes('@')
+    const loginEmail = isEmail ? emailOrUsername : `${emailOrUsername}@ghostjournal.local`
+    
+    const { data, error} = await supabase.auth.signInWithPassword({
+      email: loginEmail,
       password
     })
 
