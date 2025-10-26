@@ -50,3 +50,6 @@ next-env.d.ts
 *.swo
 *~
 
+# Test scripts with API keys
+test_fish*.sh
+

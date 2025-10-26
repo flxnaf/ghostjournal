@@ -1,69 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
 import { PrismaClient } from '@prisma/client'
+import { createServerSupabaseClient } from '@/lib/supabase'
+import { uploadPhotos } from '@/lib/storage'
 
 const prisma = new PrismaClient()
 
 export async function POST(request: NextRequest) {
   try {
+    // Get authenticated user from Supabase
+    const supabase = createServerSupabaseClient()
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !authUser) {
+      return NextResponse.json(
+        { error: 'Unauthorized - please log in' },
+        { status: 401 }
+      )
+    }
+
     const formData = await request.formData()
-    
-    const audio = formData.get('audio') as File
+
     const contexts = formData.get('contexts') as string
-    const photos: File[] = []
-    
+    const photoBlobs: Blob[] = []
+
     // Collect all photos
     for (let i = 0; i < 5; i++) {
       const photo = formData.get(`photo${i}`) as File
       if (photo) {
-        photos.push(photo)
+        photoBlobs.push(photo)
       }
     }
 
-    if (!audio || photos.length !== 5) {
+    if (photoBlobs.length !== 5) {
       return NextResponse.json(
-        { error: 'Missing required files' },
+        { error: 'All 5 photos are required' },
         { status: 400 }
       )
     }
 
-    // Create user in database
-    const user = await prisma.user.create({
+    // Upload photos to Supabase Storage
+    console.log('📤 Uploading photos to Supabase Storage...')
+    const photoUrls = await uploadPhotos(authUser.id, photoBlobs)
+    console.log('✅ Photos uploaded:', photoUrls)
+
+    // Update user with photo URLs
+    const user = await prisma.user.update({
+      where: { id: authUser.id },
       data: {
-        photoUrls: '[]',
-      }
-    })
-
-    // Create upload directory
-    const uploadDir = join(process.cwd(), 'public', 'uploads', user.id)
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
-    }
-
-    // Save audio file
-    const audioBuffer = Buffer.from(await audio.arrayBuffer())
-    const audioPath = join(uploadDir, 'recording.webm')
-    await writeFile(audioPath, audioBuffer)
-
-    // Save photos
-    const photoUrls: string[] = []
-    for (let i = 0; i < photos.length; i++) {
-      const photoBuffer = Buffer.from(await photos[i].arrayBuffer())
-      const photoPath = join(uploadDir, `photo-${i}.jpg`)
-      await writeFile(photoPath, photoBuffer)
-      photoUrls.push(`/uploads/${user.id}/photo-${i}.jpg`)
-    }
-
-    // Update user with file paths
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        audioUrl: `/uploads/${user.id}/recording.webm`,
         photoUrls: JSON.stringify(photoUrls),
       }
     })
+
+    console.log('✅ User updated with photo URLs')
 
     // Parse and store contexts
     if (contexts) {

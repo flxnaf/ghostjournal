@@ -1,13 +1,15 @@
 'use client'
 
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react'
+import { createClient } from '../supabase'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 /**
- * Temporary Auth Hook
+ * Supabase Auth Hook
  * 
- * This uses localStorage for now. Your friend can replace this with Supabase later.
+ * Replaces the temporary localStorage auth with Supabase authentication.
  * 
- * Data structure to migrate to Supabase:
+ * Data structure stored in Supabase:
  * - User profile (email, name, id)
  * - Voice clone data (voiceModelId)
  * - Face data (faceContours)
@@ -28,7 +30,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name?: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -36,66 +38,93 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
+
+  // Helper function to convert Supabase user to our User interface
+  const convertSupabaseUser = (supabaseUser: SupabaseUser): User => ({
+    id: supabaseUser.id,
+    email: supabaseUser.email || '',
+    name: supabaseUser.user_metadata?.name || supabaseUser.user_metadata?.full_name,
+    createdAt: supabaseUser.created_at
+  })
 
   // Check for existing session on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('temp_user')
-    if (storedUser) {
+    const getInitialSession = async () => {
       try {
-        setUser(JSON.parse(storedUser))
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Error getting session:', error)
+        } else if (session?.user) {
+          setUser(convertSupabaseUser(session.user))
+        }
       } catch (error) {
-        console.error('Failed to parse stored user:', error)
-        localStorage.removeItem('temp_user')
+        console.error('Error in getInitialSession:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
-  }, [])
+
+    getInitialSession()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(convertSupabaseUser(session.user))
+        } else {
+          setUser(null)
+        }
+        setIsLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
 
   const signup = async (email: string, password: string, name?: string) => {
-    // TODO: Replace with Supabase signup
-    // For now, just create a mock user and store in localStorage
-    
-    // Check if user already exists
-    const existingUsers = JSON.parse(localStorage.getItem('temp_users') || '[]')
-    const userExists = existingUsers.find((u: any) => u.email === email)
-    
-    if (userExists) {
-      throw new Error('User already exists')
-    }
-    
-    const newUser: User = {
-      id: `temp_${Date.now()}`,
+    const { data, error } = await supabase.auth.signUp({
       email,
-      name,
-      createdAt: new Date().toISOString()
+      password,
+      options: {
+        data: {
+          name: name
+        }
+      }
+    })
+
+    if (error) {
+      throw new Error(error.message)
     }
-    
-    // Store password separately (insecure, just for demo)
-    const userWithPassword = { ...newUser, password }
-    existingUsers.push(userWithPassword)
-    localStorage.setItem('temp_users', JSON.stringify(existingUsers))
-    
-    // Set current user
-    localStorage.setItem('temp_user', JSON.stringify(newUser))
-    setUser(newUser)
+
+    if (data.user) {
+      setUser(convertSupabaseUser(data.user))
+    }
   }
 
   const login = async (email: string, password: string) => {
-    // TODO: Replace with Supabase login
-    const existingUsers = JSON.parse(localStorage.getItem('temp_users') || '[]')
-    const foundUser = existingUsers.find((u: any) => u.email === email && u.password === password)
-    
-    if (!foundUser) {
-      throw new Error('Invalid email or password')
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (error) {
+      throw new Error(error.message)
     }
-    
-    const { password: _, ...userWithoutPassword } = foundUser
-    localStorage.setItem('temp_user', JSON.stringify(userWithoutPassword))
-    setUser(userWithoutPassword)
+
+    if (data.user) {
+      setUser(convertSupabaseUser(data.user))
+    }
   }
 
-  const logout = () => {
-    localStorage.removeItem('temp_user')
+  const logout = async () => {
+    const { error } = await supabase.auth.signOut()
+    
+    if (error) {
+      console.error('Error signing out:', error)
+    }
+    
     setUser(null)
   }
 
