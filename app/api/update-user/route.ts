@@ -113,8 +113,13 @@ export async function POST(request: NextRequest) {
     console.log('✅ User updated with face model and contexts')
 
     // Process personality in background
+    // Use relative URL for internal API calls (works on both localhost and Railway)
     setTimeout(() => {
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/personality`, {
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
+      fetch(`${baseUrl}/api/personality`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })

@@ -98,7 +98,11 @@ export async function POST(request: NextRequest) {
       })
       
       // Reprocess personality in background
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      // Use Railway domain for internal API calls (works on both localhost and Railway)
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
       setTimeout(() => {
         fetch(baseUrl + '/api/personality', {
           method: 'POST',
@@ -133,7 +137,13 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
       
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      // Use Railway domain for internal API calls
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
+      console.log('   Memory API URL:', baseUrl + '/api/memory')
+      
       const memoryResponse = await fetch(baseUrl + '/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -235,7 +245,11 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
       // Store in memory asynchronously (don't block response)
       if (message.length > 50) {
         console.log('💾 Storing in memory (background)...')
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        // Use Railway domain for internal API calls
+        const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+          : 'http://localhost:3000'
+        
         const memoryContent = 'User asked: ' + message + '. Response: ' + responseText
         fetch(baseUrl + '/api/memory', {
           method: 'POST',
