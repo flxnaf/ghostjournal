@@ -81,10 +81,17 @@ export async function POST(request: NextRequest) {
     console.log('✅ Face model stored in database')
 
     // Store contexts as memories
+    console.log('💾 Storing initial contexts as memories...')
+    console.log('   Contexts object:', contexts)
+    console.log('   Contexts keys:', contexts ? Object.keys(contexts) : 'NULL')
+    
     if (contexts) {
+      let savedCount = 0
       for (const [category, content] of Object.entries(contexts)) {
+        console.log(`   Processing "${category}":`, content ? `${(content as string).length} chars` : 'EMPTY')
+        
         if (content && typeof content === 'string' && content.trim()) {
-          await prisma.memory.create({
+          const memory = await prisma.memory.create({
             data: {
               userId: userId,
               content: content as string,
@@ -92,9 +99,15 @@ export async function POST(request: NextRequest) {
               embedding: '',
             }
           })
+          console.log(`   ✅ Saved "${category}" as memory:`, memory.id.substring(0, 20))
+          savedCount++
+        } else {
+          console.log(`   ⚠️ Skipped "${category}" (empty or invalid)`)
         }
       }
-      console.log('✅ Contexts stored as memories')
+      console.log(`✅ Stored ${savedCount} contexts as memories`)
+    } else {
+      console.log('⚠️ No contexts provided!')
     }
 
     console.log('✅ User updated with face model and contexts')

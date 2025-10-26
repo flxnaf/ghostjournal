@@ -32,25 +32,54 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
   }, [userId])
 
   const loadContext = async () => {
+    console.log('═══════════════════════════════════════════════')
+    console.log('🔍 ContextBuilder.loadContext() called')
+    console.log('   userId:', userId)
+    console.log('   isAdminUser:', isAdminUser)
+    console.log('   STORAGE_KEY:', STORAGE_KEY)
+    console.log('═══════════════════════════════════════════════')
+    
     try {
       // For admin users, try localStorage first
       if (isAdminUser) {
+        console.log('🔑 Admin user detected - checking localStorage...')
         const cached = localStorage.getItem(STORAGE_KEY)
+        console.log('   localStorage value:', cached ? `${cached.length} chars` : 'NULL')
+        
         if (cached) {
           console.log('📦 Loading context from localStorage (admin mode)')
-          setEntries(JSON.parse(cached))
+          const parsed = JSON.parse(cached)
+          console.log('   Parsed entries:', parsed.length)
+          setEntries(parsed)
           setLoading(false)
           return
         }
+        
+        console.log('   No localStorage data, will try database...')
+      } else {
+        console.log('👤 Regular user - skipping localStorage, going to database')
       }
       
-      console.log('📥 Loading context from database...')
+      console.log('📥 Calling GET /api/memory...')
+      console.log('   URL:', `/api/memory?userId=${userId}`)
       
       // Load memories from database (initial contexts + user-added ones)
       const memoriesResponse = await axios.get(`/api/memory?userId=${userId}`)
+      
+      console.log('📦 API Response received:')
+      console.log('   Status:', memoriesResponse.status)
+      console.log('   Data:', memoriesResponse.data)
+      
       const memories = memoriesResponse.data.memories || []
       
       console.log(`✅ Loaded ${memories.length} memories from database`)
+      
+      if (memories.length > 0) {
+        console.log('   Sample memory:', memories[0])
+        console.log('   Categories:', memories.map((m: any) => m.category).join(', '))
+      } else {
+        console.log('   ⚠️ NO MEMORIES RETURNED FROM DATABASE!')
+      }
       
       // Convert memories to ContextEntry format
       const contextEntries: ContextEntry[] = memories.map((mem: any) => ({
@@ -60,10 +89,13 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
         timestamp: new Date(mem.createdAt)
       }))
       
+      console.log('📝 Converted to ContextEntry format:', contextEntries.length)
+      
       setEntries(contextEntries)
       
       // Also cache to localStorage for offline access
       localStorage.setItem(STORAGE_KEY, JSON.stringify(contextEntries))
+      console.log('💾 Cached to localStorage for offline access')
       
     } catch (error: any) {
       console.error('Error loading context:', error)
