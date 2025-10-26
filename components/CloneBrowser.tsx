@@ -172,7 +172,7 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
       </div>
 
       {/* Clone Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClones.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <p className="text-gray-400 text-lg">
@@ -186,47 +186,51 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ scale: 1.02 }}
-              onClick={() => onSelectClone(clone.userId)}
               className="bg-dark-surface rounded-xl p-6 border border-white/20
-                       hover:border-white/40 cursor-pointer transition-all glow-border"
+                       hover:border-white/40 transition-all glow-border"
             >
-              {/* Avatar */}
-              <div className="w-24 h-24 bg-gradient-to-br from-white/20 to-white/5 
-                            rounded-full flex items-center justify-center mb-6 mx-auto">
-                <User className="w-12 h-12 text-white/70" />
+              <div className="flex items-start gap-4 mb-4">
+                {/* Avatar */}
+                <div className="w-16 h-16 bg-gradient-to-br from-white/20 to-white/5 
+                              rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-8 h-8 text-white/70" />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold text-white mb-1 truncate">
+                    {clone.name || clone.username}
+                  </h3>
+                  {clone.username && clone.username !== 'unknown' && (
+                    <p className="text-sm text-gray-400 truncate">
+                      @{clone.username}
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {/* Info */}
-              <div className="text-center mb-4">
-                <h3 className="text-2xl font-bold text-white mb-2">
-                  {clone.name || clone.username}
-                </h3>
-                {clone.username && clone.username !== 'unknown' && (
-                  <p className="text-sm text-gray-400 mb-3">
-                    @{clone.username}
-                  </p>
-                )}
-                {clone.bio && (
-                  <p className="text-sm text-gray-300 mt-4 line-clamp-3 px-2">
-                    {clone.bio}
-                  </p>
-                )}
-              </div>
+              {clone.bio && (
+                <p className="text-sm text-gray-300 mb-4 line-clamp-2">
+                  {clone.bio}
+                </p>
+              )}
 
               {/* Actions */}
-              <div className="mt-6 pt-4 border-t border-white/10 space-y-3">
-                <button className="w-full py-3 bg-blue-500 hover:bg-blue-600 
-                                 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
-                  <MessageCircle className="w-5 h-5 flex-shrink-0" />
+              <div className="flex gap-2 pt-4 border-t border-white/10">
+                <button 
+                  onClick={() => onSelectClone(clone.userId)}
+                  className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 
+                           text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                  <MessageCircle className="w-4 h-4" />
                   <span>Chat</span>
                 </button>
                 <button
                   onClick={(e) => downloadClone(clone, e)}
-                  className="w-full py-3 bg-white/10 hover:bg-white/20 
+                  className="flex-1 py-2.5 bg-white/10 hover:bg-white/20 
                            text-white font-semibold rounded-lg transition-colors
-                           border border-white/30 hover:border-white/50 flex items-center justify-center gap-2 whitespace-nowrap"
+                           border border-white/30 hover:border-white/50 flex items-center justify-center gap-2"
                 >
-                  <Download className="w-5 h-5 flex-shrink-0" />
+                  <Download className="w-4 h-4" />
                   <span>Download</span>
                 </button>
               </div>
