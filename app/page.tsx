@@ -66,15 +66,29 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   useEffect(() => {
     const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
     if (view === 'dashboard' && !isAdminBypass) {
-      console.log('🔄 Refreshing user isPublic status...')
+      console.log('🔄 Refreshing user data for dashboard...')
+      console.log('   Current user.isPublic:', user.isPublic)
       axios.get(`/api/personality?userId=${user.id}`)
         .then(res => {
-          console.log('✅ Updated isPublic:', res.data.isPublic)
+          console.log('📦 Fresh user data received:')
+          console.log('   isPublic:', res.data.isPublic)
+          console.log('   audioUrl:', !!res.data.audioUrl)
+          console.log('   faceData:', !!res.data.faceData)
+          console.log('   photoUrls:', !!res.data.photoUrls)
+          
+          // Update both local state AND user object
           setUserIsPublic(res.data.isPublic || false)
-          // Also update the user object so it's fresh for the Dashboard component
           user.isPublic = res.data.isPublic || false
+          user.audioUrl = res.data.audioUrl
+          user.faceData = res.data.faceData
+          user.photoUrls = res.data.photoUrls
+          
+          console.log('✅ User object updated')
         })
-        .catch(err => console.error('Failed to refresh user status:', err))
+        .catch(err => {
+          console.error('❌ Failed to refresh user status:', err)
+          console.error('   Error response:', err.response?.data)
+        })
     }
   }, [view, user.id])
 
@@ -335,29 +349,43 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         <Dashboard
           user={user}
           onCreateCharacter={async () => {
-            console.log('🎯 Edit Character clicked!')
-            console.log('   Current user.id:', user.id)
+            console.log('═══════════════════════════════════════════')
+            console.log('🎯 EDIT CHARACTER CLICKED')
+            console.log('═══════════════════════════════════════════')
+            console.log('   User ID:', user.id)
+            console.log('   User object audioUrl:', user.audioUrl ? 'EXISTS' : 'NULL')
+            console.log('   User object faceData:', user.faceData ? 'EXISTS' : 'NULL')
             
             // Check user's completion status
             try {
-              console.log('🔍 Checking user completion status via /api/personality...')
+              console.log('🔍 Fetching fresh user data from /api/personality...')
               const userDataResponse = await axios.get(`/api/personality?userId=${user.id}`)
               const userData = userDataResponse.data
               
-              console.log('📦 User setup status:')
-              console.log('   Has audioUrl?:', !!userData.audioUrl)
-              console.log('   Has faceData?:', !!userData.faceData)
-              console.log('   Has voiceModelId?:', !!userData.voiceModelId)
+              console.log('📦 RECEIVED DATA FROM API:')
+              console.log('   audioUrl:', userData.audioUrl || 'NULL')
+              console.log('   audioUrl exists?:', !!userData.audioUrl)
+              console.log('   faceData:', userData.faceData ? `${userData.faceData.substring(0, 50)}...` : 'NULL')
+              console.log('   faceData exists?:', !!userData.faceData)
+              console.log('   voiceModelId:', userData.voiceModelId || 'NULL')
+              console.log('   photoUrls:', userData.photoUrls || 'NULL')
               
-              const hasCompletedSetup = userData.audioUrl && userData.faceData
+              const hasAudio = !!userData.audioUrl
+              const hasFaceData = !!userData.faceData
+              const hasCompletedSetup = hasAudio && hasFaceData
+              
+              console.log('📊 SETUP STATUS EVALUATION:')
+              console.log('   hasAudio:', hasAudio)
+              console.log('   hasFaceData:', hasFaceData)
+              console.log('   hasCompletedSetup:', hasCompletedSetup)
               
               if (hasCompletedSetup) {
-                console.log('✅ Setup complete - going directly to CloneTabs')
+                console.log('✅✅✅ SETUP COMPLETE - GOING TO CLONETABS')
                 setUserId(user.id)
                 setStep('chat')
-              } else if (userData.audioUrl && !userData.faceData) {
-                console.log('⚠️ Voice recorded but photo/context not done - going to upload step')
-                // Set audioBlob to a dummy value so upload step can render
+              } else if (hasAudio && !hasFaceData) {
+                console.log('⚠️ PARTIAL SETUP - Voice done, photo/context missing')
+                console.log('   Going to upload step...')
                 setAudioBlob(new Blob())
                 setUserId(user.id)
                 setVoiceTraining({
@@ -368,17 +396,22 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                 })
                 setStep('upload')
               } else {
-                console.log('⚠️ No voice recording - starting at record step')
+                console.log('❌ NO SETUP - Starting from voice recording')
+                console.log('   Reason: hasAudio =', hasAudio, ', hasFaceData =', hasFaceData)
                 setStep('record')
               }
             } catch (err: any) {
-              console.error('❌ Error checking setup status:', err)
-              console.error('   Error details:', err.response?.data)
-              console.log('⚠️ Defaulting to record step due to error')
+              console.error('❌❌❌ ERROR CHECKING SETUP STATUS')
+              console.error('   Error:', err)
+              console.error('   Response:', err.response?.data)
+              console.error('   Status:', err.response?.status)
+              console.log('⚠️ DEFAULTING TO RECORD STEP DUE TO ERROR')
               setStep('record')
             }
             
             console.log('🎬 Setting view to character...')
+            console.log('   Final step will be:', step)
+            console.log('═══════════════════════════════════════════')
             setView('character')
           }}
           onBrowseClones={() => setView('browse')}
