@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Recorder from '@/components/Recorder'
 import Uploader from '@/components/Uploader'
-import CloneChat from '@/components/CloneChat'
+import CloneTabs from '@/components/CloneTabs'
 import LandingPage from '@/components/LandingPage'
 import ConsentDialog from '@/components/ConsentDialog'
 import { EnvErrorMessage } from '@/components/EnvErrorMessage'
@@ -245,7 +245,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
           </>
         )}
         {step === 'chat' && userId && (
-          <CloneChat userId={userId} />
+          <CloneTabs userId={userId} />
         )}
       </motion.div>
 

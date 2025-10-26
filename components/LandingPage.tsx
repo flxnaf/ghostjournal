@@ -12,6 +12,9 @@ export default function LandingPage() {
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showAdminLogin, setShowAdminLogin] = useState(false)
+  const [adminKey, setAdminKey] = useState('')
+  const [clickCount, setClickCount] = useState(0)
 
   const { login, signup } = useAuth()
 
@@ -33,6 +36,36 @@ export default function LandingPage() {
     }
   }
 
+  const handleAdminLogin = () => {
+    // Simple admin bypass - check for admin key
+    if (adminKey === 'ghostadmin' || adminKey === 'admin123') {
+      // Create a fake admin user session
+      const adminUser = {
+        id: 'admin-' + Date.now(),
+        email: 'admin@ghostjournal.local',
+        name: 'Admin User',
+        createdAt: new Date().toISOString()
+      }
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('adminBypass', 'true')
+      localStorage.setItem('adminUser', JSON.stringify(adminUser))
+      
+      // Force reload to trigger auth state
+      window.location.reload()
+    } else {
+      setError('Invalid admin key')
+    }
+  }
+
+  const handleTitleClick = () => {
+    setClickCount(prev => prev + 1)
+    if (clickCount + 1 >= 5) {
+      setShowAdminLogin(true)
+      setClickCount(0)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-dark-bg text-white flex items-center justify-center p-6">
       {/* Animated background effects */}
@@ -46,7 +79,9 @@ export default function LandingPage() {
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-7xl font-bold mb-4 glow-text"
+          onClick={handleTitleClick}
+          className="text-7xl font-bold mb-4 glow-text cursor-pointer select-none"
+          title="Click 5 times for admin login"
         >
           GhostJournal
         </motion.h1>
@@ -94,6 +129,68 @@ export default function LandingPage() {
           </button>
         </motion.p>
       </div>
+
+      {/* Admin Login Modal */}
+      <AnimatePresence>
+        {showAdminLogin && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+            onClick={() => setShowAdminLogin(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-dark-card border border-yellow-500/50 rounded-2xl p-8 max-w-md w-full"
+            >
+              <h2 className="text-3xl font-bold mb-2 text-center text-yellow-500">
+                🔑 Admin Bypass
+              </h2>
+              <p className="text-sm text-gray-400 text-center mb-6">
+                For development/testing only
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Admin Key</label>
+                  <input
+                    type="password"
+                    value={adminKey}
+                    onChange={(e) => setAdminKey(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                    className="w-full px-4 py-3 bg-dark-bg border border-yellow-500/30 rounded-lg
+                             text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="Enter admin key"
+                    autoFocus
+                  />
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleAdminLogin}
+                  className="w-full py-3 bg-yellow-500 text-black font-bold rounded-lg
+                           hover:bg-yellow-400 transition-colors"
+                >
+                  Login as Admin
+                </button>
+
+                <div className="text-xs text-gray-500 text-center mt-4">
+                  Hint: Try "ghostadmin" or "admin123"
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Auth Modal */}
       <AnimatePresence>
