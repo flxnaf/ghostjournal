@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
 import dynamic from 'next/dynamic'
-import { StopCircle } from 'lucide-react'
+import { StopCircle, Edit3, Volume2, Music } from 'lucide-react'
 
 const FaceWaveform3D = dynamic(() => import('./FaceWaveform3D'), { 
   ssr: false,
@@ -505,7 +505,9 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
             animate={{ y: 0 }}
             className="bg-dark-card border border-white/30 rounded-2xl p-8 max-w-md mx-4 text-center"
           >
-            <div className="text-6xl mb-4">🔊</div>
+            <div className="mb-4">
+              <Volume2 className="w-16 h-16 text-white mx-auto" />
+            </div>
             <h2 className="text-2xl font-bold text-white mb-4">
               Enable Audio
             </h2>
@@ -520,9 +522,10 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={enableAudio}
-              className="w-full bg-transparent border-2 border-white text-white font-bold py-4 px-8 rounded-xl hover:bg-white hover:text-black transition-all"
+              className="w-full bg-transparent border-2 border-white text-white font-bold py-4 px-8 rounded-xl hover:bg-white hover:text-black transition-all flex items-center justify-center gap-2"
             >
-              🎵 Enable Audio & Continue
+              <Music className="w-5 h-5" />
+              Enable Audio & Continue
             </motion.button>
             <p className="text-xs text-gray-500 mt-4">
               Required for voice playback
@@ -649,9 +652,10 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
                     ) : (
                       <button
                         onClick={() => setCritiquingIdx(idx)}
-                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                        className="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1"
                       >
-                        ✏️ I wouldn't respond like this...
+                        <Edit3 className="w-3 h-3" />
+                        I wouldn't respond like this...
                       </button>
                     )}
                   </div>

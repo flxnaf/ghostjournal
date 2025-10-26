@@ -300,14 +300,14 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
               className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 
                        text-white focus:border-white focus:outline-none"
             >
-              <option value="story">📖 Story</option>
-              <option value="habit">🔄 Daily Habit</option>
-              <option value="reaction">😊 Typical Reaction</option>
-              <option value="preference">❤️ Preference</option>
-              <option value="skill">🎯 Skill</option>
-              <option value="memory">💭 Memory</option>
-              <option value="goal">🎯 Goal</option>
-              <option value="value">⭐ Core Value</option>
+              <option value="story">Story</option>
+              <option value="habit">Daily Habit</option>
+              <option value="reaction">Typical Reaction</option>
+              <option value="preference">Preference</option>
+              <option value="skill">Skill</option>
+              <option value="memory">Memory</option>
+              <option value="goal">Goal</option>
+              <option value="value">Core Value</option>
             </select>
           </div>
 
