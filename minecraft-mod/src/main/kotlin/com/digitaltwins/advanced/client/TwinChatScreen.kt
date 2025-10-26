@@ -33,23 +33,37 @@ class TwinChatScreen(
     }
     
     /**
-     * Wrap text to fit within screen width
+     * Wrap text to fit within screen width, handling Minecraft color codes
      */
     private fun wrapText(text: String, maxWidth: Int): List<String> {
+        // Extract color code prefix (e.g., "§b[Felix]§f ")
+        val colorCodeRegex = Regex("(§[0-9a-fklmnor])+")
+        var currentColorCodes = ""
+        
         val words = text.split(" ")
         val lines = mutableListOf<String>()
         var currentLine = ""
         
         for (word in words) {
+            // Track color codes in this word
+            if (word.contains("§")) {
+                colorCodeRegex.findAll(word).forEach { match ->
+                    currentColorCodes = match.value
+                }
+            }
+            
             val testLine = if (currentLine.isEmpty()) word else "$currentLine $word"
-            val width = textRenderer.getWidth(testLine)
+            // Strip color codes for width measurement
+            val visibleText = testLine.replace(colorCodeRegex, "")
+            val width = textRenderer.getWidth(visibleText)
             
             if (width > maxWidth) {
                 if (currentLine.isNotEmpty()) {
                     lines.add(currentLine)
-                    currentLine = word
+                    // Start new line with inherited color codes
+                    currentLine = currentColorCodes + word.replace(colorCodeRegex, "")
                 } else {
-                    // Single word too long, split it
+                    // Single word too long, just add it
                     lines.add(word)
                 }
             } else {

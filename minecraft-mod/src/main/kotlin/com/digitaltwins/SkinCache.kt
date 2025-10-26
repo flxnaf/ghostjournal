@@ -36,23 +36,29 @@ object SkinCache {
         // Download and register
         try {
             println("📥 Downloading skin from: ${skinUrl.substring(0, 50)}...")
+            println("   Full URL: $skinUrl")
+            println("   Entity name: $entityName")
+            
             val skinId = Identifier("digitaltwins", "skins/${entityName.lowercase().replace(" ", "_")}")
 
-            // Download skin texture
+            // Download skin texture with timeout
             val request = Request.Builder()
                 .url(skinUrl)
                 .build()
 
+            println("🌐 Attempting HTTP request...")
             val response = client.newCall(request).execute()
 
             if (!response.isSuccessful) {
                 println("❌ Failed to download skin: HTTP ${response.code}")
+                println("   Response message: ${response.message}")
+                println("   ⚠️ Check your internet connection!")
                 return Identifier("minecraft", "textures/entity/steve.png")
             }
 
             // Load image
             val imageBytes = response.body?.bytes()
-            if (imageBytes == null) {
+            if (imageBytes == null || imageBytes.isEmpty()) {
                 println("❌ No image data received")
                 return Identifier("minecraft", "textures/entity/steve.png")
             }
@@ -60,6 +66,7 @@ object SkinCache {
             println("✅ Downloaded ${imageBytes.size} bytes")
 
             val image = NativeImage.read(ByteArrayInputStream(imageBytes))
+            println("✅ Image parsed: ${image.width}x${image.height}")
 
             // Register texture on main thread
             MinecraftClient.getInstance().execute {
@@ -69,6 +76,7 @@ object SkinCache {
                     println("✅ Registered skin texture: $skinId")
                 } catch (e: Exception) {
                     println("❌ Failed to register texture: ${e.message}")
+                    e.printStackTrace()
                 }
             }
 
@@ -78,8 +86,16 @@ object SkinCache {
 
             return skinId
 
+        } catch (e: java.net.UnknownHostException) {
+            println("❌ No internet connection - cannot download skin")
+            println("   Entity will use Steve skin")
+            return Identifier("minecraft", "textures/entity/steve.png")
+        } catch (e: java.net.SocketTimeoutException) {
+            println("❌ Connection timeout - check your internet")
+            return Identifier("minecraft", "textures/entity/steve.png")
         } catch (e: Exception) {
             println("❌ Failed to download skin: ${e.message}")
+            println("   Exception type: ${e.javaClass.simpleName}")
             e.printStackTrace()
             return Identifier("minecraft", "textures/entity/steve.png")
         }
