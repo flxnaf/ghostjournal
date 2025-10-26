@@ -3,8 +3,25 @@
  * Handles file uploads for audio recordings and photos
  */
 
-import { createClient } from './supabase'
+import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Create admin client with service role key (bypasses RLS)
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase credentials for admin operations')
+  }
+  
+  return createBrowserClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 export const STORAGE_BUCKETS = {
   AUDIO: 'audio-recordings',
@@ -18,12 +35,9 @@ export const STORAGE_BUCKETS = {
  * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Public URL of uploaded file
  */
-export async function uploadAudio(
-  userId: string,
-  audioFile: Blob,
-  supabaseClient?: SupabaseClient
-): Promise<string> {
-  const supabase = supabaseClient || createClient()
+export async function uploadAudio(userId: string, audioFile: Blob): Promise<string> {
+  // Use admin client with service role key (bypasses RLS)
+  const supabase = createAdminClient()
 
   const fileName = `${userId}/recording-${Date.now()}.webm`
 
@@ -83,10 +97,10 @@ async function uploadAudioLocal(userId: string, audioFile: Blob): Promise<string
 export async function uploadPhoto(
   userId: string,
   photoFile: Blob,
-  index: number,
-  supabaseClient?: SupabaseClient
+  index: number
 ): Promise<string> {
-  const supabase = supabaseClient || createClient()
+  // Use admin client with service role key (bypasses RLS)
+  const supabase = createAdminClient()
 
   const fileName = `${userId}/photo-${index}-${Date.now()}.jpg`
 
@@ -144,11 +158,10 @@ async function uploadPhotoLocal(userId: string, photoFile: Blob, index: number):
  */
 export async function uploadPhotos(
   userId: string,
-  photoFiles: Blob[],
-  supabaseClient?: SupabaseClient
+  photoFiles: Blob[]
 ): Promise<string[]> {
   const uploadPromises = photoFiles.map((file, index) =>
-    uploadPhoto(userId, file, index, supabaseClient)
+    uploadPhoto(userId, file, index)
   )
 
   return Promise.all(uploadPromises)
@@ -159,7 +172,7 @@ export async function uploadPhotos(
  * @param userId - User's UUID from Supabase auth
  */
 export async function deleteAudio(userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   // List all audio files for this user
   const { data: files, error: listError } = await supabase.storage
@@ -189,7 +202,7 @@ export async function deleteAudio(userId: string): Promise<void> {
  * @param userId - User's UUID from Supabase auth
  */
 export async function deletePhotos(userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   // List all photo files for this user
   const { data: files, error: listError } = await supabase.storage
