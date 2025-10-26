@@ -36,21 +36,22 @@ export async function POST(request: NextRequest) {
     console.log('   ⚠️ ChromaDB disabled, using mock storage (hackathon mode)')
     return handleMockMemory(userId, action, content, query)
 
-    const collectionName = `user_${userId}`
-
-    switch (action) {
-      case 'initialize':
-        return await initializeMemories(client, userId, collectionName)
-      
-      case 'add':
-        return await addMemory(client, userId, collectionName, content)
-      
-      case 'query':
-        return await queryMemories(client, collectionName, query)
-      
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-    }
+    // NOTE: ChromaDB code disabled for hackathon (see handleMockMemory below)
+    // If you want to enable ChromaDB, uncomment the code below and install chromadb package
+    
+    // const collectionName = `user_${userId}`
+    // const client = new ChromaClient({ path: `http://${chromaHost}:${chromaPort}` })
+    //
+    // switch (action) {
+    //   case 'initialize':
+    //     return await initializeMemories(client, userId, collectionName)
+    //   case 'add':
+    //     return await addMemory(client, userId, collectionName, content)
+    //   case 'query':
+    //     return await queryMemories(client, collectionName, query)
+    //   default:
+    //     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+    // }
 
   } catch (error: any) {
     console.error('ChromaDB error:', error)
