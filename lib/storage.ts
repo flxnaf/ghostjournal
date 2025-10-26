@@ -4,6 +4,7 @@
  */
 
 import { createClient } from './supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const STORAGE_BUCKETS = {
   AUDIO: 'audio-recordings',
@@ -14,10 +15,15 @@ export const STORAGE_BUCKETS = {
  * Upload audio file to Supabase Storage
  * @param userId - User's UUID from Supabase auth
  * @param audioFile - Audio file blob
+ * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Public URL of uploaded file
  */
-export async function uploadAudio(userId: string, audioFile: Blob): Promise<string> {
-  const supabase = createClient()
+export async function uploadAudio(
+  userId: string,
+  audioFile: Blob,
+  supabaseClient?: SupabaseClient
+): Promise<string> {
+  const supabase = supabaseClient || createClient()
 
   const fileName = `${userId}/recording-${Date.now()}.webm`
 
@@ -71,14 +77,16 @@ async function uploadAudioLocal(userId: string, audioFile: Blob): Promise<string
  * @param userId - User's UUID from Supabase auth
  * @param photoFile - Photo file blob
  * @param index - Photo index (for multiple photos)
+ * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Public URL of uploaded file
  */
 export async function uploadPhoto(
   userId: string,
   photoFile: Blob,
-  index: number
+  index: number,
+  supabaseClient?: SupabaseClient
 ): Promise<string> {
-  const supabase = createClient()
+  const supabase = supabaseClient || createClient()
 
   const fileName = `${userId}/photo-${index}-${Date.now()}.jpg`
 
@@ -131,14 +139,16 @@ async function uploadPhotoLocal(userId: string, photoFile: Blob, index: number):
  * Upload multiple photos to Supabase Storage
  * @param userId - User's UUID from Supabase auth
  * @param photoFiles - Array of photo file blobs
+ * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Array of public URLs
  */
 export async function uploadPhotos(
   userId: string,
-  photoFiles: Blob[]
+  photoFiles: Blob[],
+  supabaseClient?: SupabaseClient
 ): Promise<string[]> {
   const uploadPromises = photoFiles.map((file, index) =>
-    uploadPhoto(userId, file, index)
+    uploadPhoto(userId, file, index, supabaseClient)
   )
 
   return Promise.all(uploadPromises)
