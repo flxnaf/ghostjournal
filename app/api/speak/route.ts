@@ -33,22 +33,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user data
+    // Get user data (or use admin bypass)
     console.log('🔍 Looking up user:', userId)
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    if (!user) {
-      console.error('❌ User not found:', userId)
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    
+    // Admin bypass: Allow testing without database
+    const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
+    let user: any
+    
+    if (isAdminUser) {
+      console.log('🔑 Admin user detected - using mock profile')
+      user = {
+        id: userId,
+        voiceModelId: null, // Will use Fish Audio default voice
+        personalityData: null, // Will use default personality prompt
+        email: 'admin@replik.local',
+        name: 'Admin User'
+      }
+    } else {
+      user = await prisma.user.findUnique({ where: { id: userId } })
+      if (!user) {
+        console.error('❌ User not found:', userId)
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      console.log('✅ User found')
     }
-    console.log('✅ User found')
 
     // Check for keyword commands to update context
     const lowerMessage = message.toLowerCase()
     
-    // Handle "i have new stories:" or similar context updates
-    if (lowerMessage.includes('i have new stor') || lowerMessage.includes('new story:') || 
+    // Handle "i have new stories:" or similar context updates (skip for admin)
+    if (!isAdminUser && (lowerMessage.includes('i have new stor') || lowerMessage.includes('new story:') || 
         lowerMessage.includes('i have new habit') || lowerMessage.includes('new habit:') ||
-        lowerMessage.includes('i have new reaction') || lowerMessage.includes('new reaction:')) {
+        lowerMessage.includes('i have new reaction') || lowerMessage.includes('new reaction:'))) {
       
       console.log('📝 Detected context update keyword, adding to memories...')
       
@@ -68,8 +84,9 @@ export async function POST(request: NextRequest) {
       })
       
       // Reprocess personality in background
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
       setTimeout(() => {
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/personality`, {
+        fetch(baseUrl + '/api/personality', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
@@ -95,7 +112,8 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
       
-      const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/memory`, {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+      const memoryResponse = await fetch(baseUrl + '/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -169,23 +187,43 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
     const audioUrl = await generateVoice(user.voiceModelId, responseText, userId)
     console.log('✅ Voice generated:', audioUrl || 'No audio (Fish API not configured)')
 
-    // Store conversation
-    await prisma.conversation.create({
-      data: {
-        userId,
-        role: 'user',
-        content: message
-      }
-    })
+    // Store conversation (skip for admin)
+    if (!isAdminUser) {
+      await prisma.conversation.create({
+        data: {
+          userId,
+          role: 'user',
+          content: message
+        }
+      })
 
-    await prisma.conversation.create({
-      data: {
-        userId,
-        role: 'assistant',
-        content: responseText,
-        audioUrl
+      await prisma.conversation.create({
+        data: {
+          userId,
+          role: 'assistant',
+          content: responseText,
+          audioUrl
+        }
+      })
+      
+      // Store in memory asynchronously (don't block response)
+      if (message.length > 50) {
+        console.log('💾 Storing in memory (background)...')
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        const memoryContent = 'User asked: ' + message + '. Response: ' + responseText
+        fetch(baseUrl + '/api/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId, 
+            action: 'add', 
+            content: memoryContent
+          })
+        })
+          .then(() => console.log('✅ Stored in memory'))
+          .catch(err => console.warn('⚠️ Memory storage failed:', err))
       }
-    })
+    }
 
     console.log('🎉 Response complete!')
     const responseData = {
@@ -194,22 +232,6 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
       success: true
     }
     console.log('📤 Sending to frontend:', JSON.stringify(responseData).substring(0, 200))
-    
-    // Store in memory asynchronously (don't block response)
-    if (message.length > 50) {
-      console.log('💾 Storing in memory (background)...')
-              fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/memory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId, 
-          action: 'add', 
-          content: `User asked: ${message}. Response: ${responseText}` 
-        })
-      })
-        .then(() => console.log('✅ Stored in memory'))
-        .catch(err => console.warn('⚠️ Memory storage failed:', err))
-    }
     
     return NextResponse.json(responseData)
 
@@ -516,4 +538,3 @@ async function generateVoice(
     return ''
   }
 }
-

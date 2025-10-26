@@ -78,6 +78,62 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
     clone.name?.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
+  const downloadClone = async (clone: Clone, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent triggering onSelectClone
+    
+    try {
+      console.log('📥 Downloading clone data for:', clone.username)
+      
+      // Fetch full clone data
+      const response = await axios.get(`/api/personality?userId=${clone.userId}`)
+      const cloneData = response.data
+      
+      // Build export package
+      const exportData = {
+        // User info
+        userId: clone.userId,
+        username: clone.username,
+        name: cloneData.name || clone.name || clone.username,
+        bio: clone.bio,
+        createdAt: clone.createdAt,
+        
+        // Context entries
+        context: cloneData.personalityData ? JSON.parse(cloneData.personalityData) : {},
+        
+        // Voice model info (for Fish Audio API calls)
+        voiceModelId: cloneData.voiceModelId,
+        audioUrl: cloneData.audioUrl,
+        voiceProvider: 'fish-audio',
+        
+        // Face/appearance data
+        faceData: cloneData.faceData ? JSON.parse(cloneData.faceData) : null,
+        
+        // Minecraft integration instructions
+        minecraftIntegration: {
+          apiUrl: window.location.origin + '/api/speak',
+          usage: 'See MINECRAFT_INTEGRATION.md for implementation guide',
+          note: 'voiceModelId is used to call Fish Audio API for voice synthesis'
+        }
+      }
+      
+      // Download as JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${clone.username}_clone.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      console.log('✅ Clone downloaded successfully')
+    } catch (error: any) {
+      console.error('❌ Download failed:', error)
+      alert(`Failed to download clone: ${error.message}`)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
@@ -157,11 +213,19 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
                 </div>
               </div>
 
-              {/* Action */}
-              <div className="mt-4 pt-4 border-t border-white/10">
+              {/* Actions */}
+              <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
                 <button className="w-full py-2 bg-white/10 hover:bg-white/20 
                                  text-white font-medium rounded-lg transition-colors">
-                  Chat with Clone
+                  💬 Chat with Clone
+                </button>
+                <button
+                  onClick={(e) => downloadClone(clone, e)}
+                  className="w-full py-2 bg-white/5 hover:bg-white/10 
+                           text-white/80 font-medium rounded-lg transition-colors
+                           border border-white/20 hover:border-white/40"
+                >
+                  📥 Download for Minecraft
                 </button>
               </div>
             </motion.div>
