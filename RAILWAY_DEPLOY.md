@@ -92,44 +92,42 @@ Quick fix for hackathon:
 - Keep uploads in `/public/uploads/` (will persist during session)
 - For production, migrate to cloud storage
 
-## Architecture: Railway + Vercel
+## Do You Need Vercel Too?
 
-For best performance:
+**No!** Railway hosts your **entire Next.js app** in one place:
 
 ```
 ┌─────────────────────────────────────────┐
-│  FRONTEND (Vercel)                      │
-│  - Landing page                         │
-│  - Static assets                        │
-│  - Client-side React components         │
-└──────────────────┬──────────────────────┘
-                   │
-                   │ API calls
-                   │
-┌──────────────────▼──────────────────────┐
-│  BACKEND (Railway)                      │
-│  - Next.js API routes                   │
+│  RAILWAY (Everything)                   │
+│  - Frontend (landing page, UI)         │
+│  - API routes                           │
 │  - Database (PostgreSQL/SQLite)         │
 │  - File uploads                         │
 │  - AI processing (Claude, Fish Audio)   │
 └─────────────────────────────────────────┘
 ```
 
-To implement this:
+**For hackathon: Just use Railway. One deployment, one URL, done.** ✓
 
-1. **Deploy full app to Railway** (done above)
-2. **Update Vercel to proxy API calls:**
-   ```typescript
-   // vercel.json
+### Optional: Railway + Vercel Hybrid (for scale)
+
+Only if you need:
+- Vercel's global CDN for faster page loads
+- Separate frontend/backend scaling
+
+To implement:
+1. Deploy full app to Railway (backend)
+2. Deploy frontend to Vercel
+3. Add proxy in `vercel.json`:
+   ```json
    {
      "rewrites": [
-       {
-         "source": "/api/:path*",
-         "destination": "https://your-railway-app.up.railway.app/api/:path*"
-       }
+       { "source": "/api/:path*", "destination": "https://your-railway-app.up.railway.app/api/:path*" }
      ]
    }
    ```
+
+**But for your hackathon: Railway alone is perfect!**
 
 ## Testing Deployment
 
