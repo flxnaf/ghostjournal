@@ -127,14 +127,15 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       setVoiceTraining({ 
         isTraining: false, 
         progress: 100, 
-        status: 'Admin mode - voice training skipped' 
+        status: 'Admin mode - voice training skipped',
+        error: null
       })
       return
     }
     
     // Start voice training in background (for real users)
     console.log('🎤 Recording complete, starting voice training...')
-    setVoiceTraining({ isTraining: true, progress: 10, status: 'Uploading audio...' })
+    setVoiceTraining({ isTraining: true, progress: 10, status: 'Uploading audio...', error: null })
     
     try {
       // Create user with audio only
@@ -151,7 +152,8 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
           setVoiceTraining({ 
             isTraining: true, 
             progress: Math.min(percentCompleted / 2, 50), // 0-50% for upload
-            status: 'Uploading audio...'
+            status: 'Uploading audio...',
+            error: null
           })
         }
       })
@@ -161,7 +163,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       setUserId(newUserId)
       
       // Start voice training
-      setVoiceTraining({ isTraining: true, progress: 50, status: 'Training voice model (S1)...' })
+      setVoiceTraining({ isTraining: true, progress: 50, status: 'Training voice model (S1)...', error: null })
       
       const voiceResponse = await axios.post('/api/voice-clone', { 
         userId: newUserId 
@@ -169,7 +171,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         timeout: 200000 // 200 second timeout (generous for Fish Audio training)
       })
       
-      setVoiceTraining({ isTraining: true, progress: 100, status: 'Voice model ready!' })
+      setVoiceTraining({ isTraining: true, progress: 100, status: 'Voice model ready!', error: null })
       
       console.log('✅ Voice training complete:', voiceResponse.data.modelId)
       
