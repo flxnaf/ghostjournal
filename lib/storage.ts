@@ -3,7 +3,24 @@
  * Handles file uploads for audio recordings and photos
  */
 
-import { createClient } from './supabase'
+import { createClient as createBrowserClient } from '@supabase/supabase-js'
+
+// Create admin client with service role key (bypasses RLS)
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase credentials for admin operations')
+  }
+  
+  return createBrowserClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 export const STORAGE_BUCKETS = {
   AUDIO: 'audio-recordings',
@@ -17,7 +34,8 @@ export const STORAGE_BUCKETS = {
  * @returns Public URL of uploaded file
  */
 export async function uploadAudio(userId: string, audioFile: Blob): Promise<string> {
-  const supabase = createClient()
+  // Use admin client with service role key (bypasses RLS)
+  const supabase = createAdminClient()
 
   const fileName = `${userId}/recording-${Date.now()}.webm`
 
@@ -78,7 +96,8 @@ export async function uploadPhoto(
   photoFile: Blob,
   index: number
 ): Promise<string> {
-  const supabase = createClient()
+  // Use admin client with service role key (bypasses RLS)
+  const supabase = createAdminClient()
 
   const fileName = `${userId}/photo-${index}-${Date.now()}.jpg`
 
@@ -149,7 +168,7 @@ export async function uploadPhotos(
  * @param userId - User's UUID from Supabase auth
  */
 export async function deleteAudio(userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   // List all audio files for this user
   const { data: files, error: listError } = await supabase.storage
@@ -179,7 +198,7 @@ export async function deleteAudio(userId: string): Promise<void> {
  * @param userId - User's UUID from Supabase auth
  */
 export async function deletePhotos(userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   // List all photo files for this user
   const { data: files, error: listError } = await supabase.storage
