@@ -53,6 +53,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   const [userId, setUserId] = useState<string | null>(null)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [browsingUserId, setBrowsingUserId] = useState<string | null>(null)
+  const [browsingUserName, setBrowsingUserName] = useState<string | null>(null)
   const [voiceTraining, setVoiceTraining] = useState({
     isTraining: false,
     progress: 0,
@@ -282,6 +283,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                 onClick={() => {
                   setView('dashboard')
                   setBrowsingUserId(null)
+                  setBrowsingUserName(null)
                 }}
                 className="px-4 py-2 bg-transparent border border-white/30 text-white text-sm rounded-lg
                          hover:bg-white/20 transition-colors"
@@ -315,11 +317,21 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       {view === 'browse' && (
         <CloneBrowser
           currentUserId={user.id}
-          onSelectClone={(selectedUserId) => {
+          onSelectClone={async (selectedUserId) => {
             setBrowsingUserId(selectedUserId)
             setUserId(selectedUserId)
             setStep('chat')
             setView('character')
+            
+            // Fetch the browsing user's name
+            try {
+              const response = await axios.get(`/api/personality?userId=${selectedUserId}`)
+              const userName = response.data.name || response.data.username || 'User'
+              setBrowsingUserName(userName)
+            } catch (error) {
+              console.error('Failed to fetch browsing user name:', error)
+              setBrowsingUserName('User')
+            }
           }}
         />
       )}
@@ -333,10 +345,10 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
             className="text-center mb-12"
           >
             <h1 className="text-6xl font-bold mb-4 glow-text">
-              {browsingUserId && browsingUserId !== user.id ? 'Chat with Clone' : 'Replik'}
+              {browsingUserId && browsingUserId !== user.id ? `${browsingUserName || 'User'}'s Clone` : 'Replik'}
             </h1>
             <p className="text-white text-xl">
-              {browsingUserId && browsingUserId !== user.id ? 'Talking to another AI clone' : 'Your Digital Clone'}
+              {browsingUserId && browsingUserId !== user.id ? `Talking to ${browsingUserName || "another user"}'s clone` : 'Your Digital Clone'}
             </p>
           </motion.div>
 
@@ -393,6 +405,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                 userId={browsingUserId || userId} 
                 currentUserId={user.id}
                 isOwner={!browsingUserId || browsingUserId === user.id}
+                ownerName={browsingUserId ? browsingUserName : null}
               />
             )}
           </motion.div>
