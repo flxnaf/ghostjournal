@@ -541,17 +541,56 @@ async function generateVoice(
       }
     )
 
-    // Save audio file
-    const filename = `response_${Date.now()}.mp3`
-    const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
-    const audioPath = join(uploadDir, filename)
+    // Upload audio to Supabase Storage
+    const filename = `${userId}/response_${Date.now()}.mp3`
+    const audioBuffer = Buffer.from(response.data)
     
-    // Create directory if it doesn't exist
-    await mkdir(uploadDir, { recursive: true })
-    await writeFile(audioPath, Buffer.from(response.data))
+    console.log('📤 Uploading audio to Supabase Storage...')
+    console.log('   Filename:', filename)
+    console.log('   Size:', audioBuffer.length, 'bytes')
+    
+    // Check if Supabase is configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.warn('⚠️ Supabase not configured - saving to local filesystem')
+      const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+      const audioPath = join(uploadDir, `response_${Date.now()}.mp3`)
+      await mkdir(uploadDir, { recursive: true })
+      await writeFile(audioPath, audioBuffer)
+      return `/uploads/${userId}/response_${Date.now()}.mp3`
+    }
+    
+    // Create admin Supabase client (bypasses RLS)
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('audio-recordings')
+      .upload(filename, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true,
+      })
 
-    console.log('✅ Audio saved to:', `/uploads/${userId}/${filename}`)
-    return `/uploads/${userId}/${filename}`
+    if (error) {
+      console.error('❌ Supabase Storage error:', error)
+      throw new Error(`Failed to upload audio: ${error.message}`)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('audio-recordings')
+      .getPublicUrl(filename)
+
+    console.log('✅ Audio uploaded to Supabase:', urlData.publicUrl)
+    return urlData.publicUrl
 
   } catch (error: any) {
     console.error('❌ Fish Audio TTS error:', error)
