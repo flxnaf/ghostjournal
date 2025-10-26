@@ -137,6 +137,17 @@ object TwinCommands {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val twinData = TwinAPI.downloadTwin(finalUrl)
+                
+                // Debug logging for voice model ID
+                println("═══════════════════════════════════════════")
+                println("🎤 TWIN DATA RECEIVED:")
+                println("   display_name: ${twinData.display_name}")
+                println("   twin_id: ${twinData.twin_id}")
+                println("   voice_model_id: ${twinData.voice_model_id ?: "NULL"}")
+                println("   voice_model_id type: ${twinData.voice_model_id?.javaClass?.simpleName ?: "N/A"}")
+                println("   voice_model_id length: ${twinData.voice_model_id?.length ?: 0}")
+                println("═══════════════════════════════════════════")
+                
                 TwinStorage.addTwin(twinData)
 
                 // Success message on main thread
@@ -145,6 +156,19 @@ object TwinCommands {
                         Text.literal("§a✓ Loaded twin: ${twinData.display_name}"),
                         false
                     )
+                    
+                    // Show voice model status
+                    if (twinData.voice_model_id != null) {
+                        player.sendMessage(
+                            Text.literal("§7   Voice model: ${twinData.voice_model_id.substring(0, minOf(20, twinData.voice_model_id.length))}..."),
+                            false
+                        )
+                    } else {
+                        player.sendMessage(
+                            Text.literal("§c   Warning: No voice model (will use default voice)"),
+                            false
+                        )
+                    }
 
                     // Show skin status if available
                     if (!twinData.minecraft_skin_url.isNullOrEmpty()) {

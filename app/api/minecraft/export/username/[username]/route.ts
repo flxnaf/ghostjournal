@@ -38,6 +38,11 @@ export async function GET(
     }
 
     console.log('✅ User found:', user.name || user.username)
+    console.log('═══════════════════════════════════════════')
+    console.log('🎤 USER VOICE DATA:')
+    console.log('   voiceModelId:', user.voiceModelId || 'NULL')
+    console.log('   audioUrl:', user.audioUrl || 'NULL')
+    console.log('═══════════════════════════════════════════')
 
     // Fetch Minecraft skin if username is set
     let minecraftSkinUrl = null
@@ -61,7 +66,7 @@ export async function GET(
       created_at: user.createdAt.toISOString()
     }
 
-    console.log('✅ Returning twin data')
+    console.log('✅ Returning twin data with voice_model_id:', twinData.voice_model_id || 'NULL')
     return NextResponse.json(twinData)
 
   } catch (error: any) {

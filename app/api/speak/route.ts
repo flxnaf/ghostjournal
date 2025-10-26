@@ -56,6 +56,7 @@ export async function POST(request: NextRequest) {
         select: {
           id: true,
           voiceModelId: true,
+          audioUrl: true,
           personalityData: true,
           name: true,
           email: true,
@@ -69,7 +70,14 @@ export async function POST(request: NextRequest) {
     console.log('✅ User found')
       console.log('   User name:', user.name || user.username)
       console.log('   User email:', user.email)
-      console.log('🎤 User voiceModelId:', user.voiceModelId || 'NULL (will use default)')
+      console.log('═══════════════════════════════════════════')
+      console.log('🎤 VOICE MODEL CHECK FROM DATABASE:')
+      console.log('   voiceModelId:', user.voiceModelId || 'NULL')
+      console.log('   audioUrl:', user.audioUrl || 'NULL')
+      console.log('   voiceModelId type:', typeof user.voiceModelId)
+      console.log('   voiceModelId length:', user.voiceModelId?.length || 0)
+      console.log('   First 50 chars:', user.voiceModelId?.substring(0, 50) || 'N/A')
+      console.log('═══════════════════════════════════════════')
     }
 
     // Check for keyword commands to update context
