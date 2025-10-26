@@ -142,6 +142,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       
       const response = await axios.post('/api/create-user', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000, // 60 second timeout
         onUploadProgress: (progressEvent) => {
           const percentCompleted = progressEvent.total 
             ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
@@ -161,7 +162,11 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       // Start voice training
       setVoiceTraining({ isTraining: true, progress: 50, status: 'Training voice model (S1)...' })
       
-      const voiceResponse = await axios.post('/api/voice-clone', { userId: newUserId })
+      const voiceResponse = await axios.post('/api/voice-clone', { 
+        userId: newUserId 
+      }, {
+        timeout: 200000 // 200 second timeout (generous for Fish Audio training)
+      })
       
       setVoiceTraining({ isTraining: true, progress: 100, status: 'Voice model ready!' })
       
@@ -170,6 +175,13 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
     } catch (error) {
       console.error('❌ Voice training failed:', error)
       setVoiceTraining({ isTraining: false, progress: 0, status: 'Training failed - using default voice' })
+      
+      // IMPORTANT: Still allow user to continue even if voice training failed
+      // Set a temporary userId so they can proceed to the upload step
+      if (!userId) {
+        console.log('⚠️ Setting userId to user.id to allow continuation')
+        setUserId(user.id)
+      }
     }
   }
 
