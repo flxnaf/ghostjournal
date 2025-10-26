@@ -339,7 +339,7 @@ function Face3DModel({ audioData, isPlaying, emotion }: FaceWaveform3DProps) {
             console.log(`%c🔍 CLIENT RENDER CHECK (CRITICAL):`, 'color: cyan; font-size: 16px; font-weight: bold')
             console.log(`   Jawline width: ${jawWidth.toFixed(3)}`)
             console.log(`   Sample jaw point:`, jawline.points[0])
-            console.log(`   ALL jaw points:`, jawline.points.slice(0, 5).map(p => `[${p[0].toFixed(3)}, ${p[1].toFixed(3)}, ${p[2].toFixed(3)}]`))
+            console.log(`   ALL jaw points:`, jawline.points.slice(0, 5).map((p: number[]) => `[${p[0].toFixed(3)}, ${p[1].toFixed(3)}, ${p[2].toFixed(3)}]`))
             console.log(`   DEFAULT mock: width=0.700, point=[-0.350, -0.350, 0.040]`)
             
             // Check if this is the EXACT default mock face
