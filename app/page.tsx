@@ -391,8 +391,8 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
             {step === 'chat' && userId && (
               <CloneTabs 
                 userId={browsingUserId || userId} 
-                currentUserId={userId}
-                isOwner={!browsingUserId || browsingUserId === userId}
+                currentUserId={user.id}
+                isOwner={!browsingUserId || browsingUserId === user.id}
               />
             )}
           </motion.div>

@@ -468,6 +468,28 @@ export default function CloneChat({ userId }: CloneChatProps) {
             emotion={currentEmotion}
           />
           
+          {/* Emotion Indicator */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2">
+            <motion.div
+              key={currentEmotion}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border-2 ${
+                currentEmotion === 'joy' ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300' :
+                currentEmotion === 'anger' ? 'bg-red-500/20 border-red-500 text-red-300' :
+                currentEmotion === 'sadness' ? 'bg-blue-500/20 border-blue-500 text-blue-300' :
+                currentEmotion === 'surprise' ? 'bg-purple-500/20 border-purple-500 text-purple-300' :
+                currentEmotion === 'fear' ? 'bg-orange-500/20 border-orange-500 text-orange-300' :
+                currentEmotion === 'love' ? 'bg-pink-500/20 border-pink-500 text-pink-300' :
+                currentEmotion === 'excitement' ? 'bg-green-500/20 border-green-500 text-green-300' :
+                'bg-gray-500/20 border-gray-500 text-gray-300'
+              }`}
+            >
+              Emotion: {currentEmotion.charAt(0).toUpperCase() + currentEmotion.slice(1)}
+            </motion.div>
+          </div>
+
           {/* Status Indicator */}
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
             <motion.div
