@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import axios from 'axios'
-import { Download, Heart } from 'lucide-react'
+import { Download, Heart, BookOpen, RotateCcw, Smile, Target, Brain, Trophy, Star } from 'lucide-react'
 
 interface ContextBuilderProps {
   userId: string
@@ -361,16 +361,15 @@ export default function ContextBuilder({ userId }: ContextBuilderProps) {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-dark-bg rounded-full text-sm font-medium text-white">
-                      {entry.category === 'story' && '📖'}
-                      {entry.category === 'habit' && '🔄'}
-                      {entry.category === 'reaction' && '😊'}
-                      {entry.category === 'preference' && '❤️'}
-                      {entry.category === 'skill' && '🎯'}
-                      {entry.category === 'memory' && '💭'}
-                      {entry.category === 'goal' && '🎯'}
-                      {entry.category === 'value' && '⭐'}
-                      {' '}
+                    <span className="px-3 py-1 bg-dark-bg rounded-full text-sm font-medium text-white flex items-center gap-2">
+                      {entry.category === 'story' && <BookOpen className="w-4 h-4" />}
+                      {entry.category === 'habit' && <RotateCcw className="w-4 h-4" />}
+                      {entry.category === 'reaction' && <Smile className="w-4 h-4" />}
+                      {entry.category === 'preference' && <Heart className="w-4 h-4" />}
+                      {entry.category === 'skill' && <Target className="w-4 h-4" />}
+                      {entry.category === 'memory' && <Brain className="w-4 h-4" />}
+                      {entry.category === 'goal' && <Trophy className="w-4 h-4" />}
+                      {entry.category === 'value' && <Star className="w-4 h-4" />}
                       {entry.category}
                     </span>
                     <span className="text-xs text-gray-500">

@@ -42,21 +42,30 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
     }
   ])
   
-  // Update initial message when ownerName changes
+  // Track previous ownerName to detect actual changes
+  const [prevOwnerName, setPrevOwnerName] = useState(ownerName)
+  
+  // Only reset messages if ownerName actually changes (not just tab switch)
   useEffect(() => {
-    setMessages([
-      {
-        role: 'assistant',
-        content: getInitialMessage()
-      }
-    ])
-  }, [ownerName])
+    if (ownerName !== prevOwnerName) {
+      console.log('🔄 ownerName changed from', prevOwnerName, 'to', ownerName, '- resetting messages')
+      setMessages([
+        {
+          role: 'assistant',
+          content: getInitialMessage()
+        }
+      ])
+      setPrevOwnerName(ownerName)
+    }
+  }, [ownerName, prevOwnerName])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [audioData, setAudioData] = useState<number[]>([])
   const [currentEmotion, setCurrentEmotion] = useState<string>('neutral')
   const [canInterrupt, setCanInterrupt] = useState(true)
+  const [critiquingIdx, setCritiquingIdx] = useState<number | null>(null)
+  const [critiqueInput, setCritiqueInput] = useState('')
   
   // Store userId in sessionStorage for FaceWaveform3D
   useEffect(() => {
@@ -347,6 +356,35 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
     }
   }
 
+  const handleCritique = async (messageIdx: number) => {
+    if (!critiqueInput.trim()) return
+
+    console.log('✏️ User critiquing response:', messages[messageIdx].content.substring(0, 50))
+    console.log('   Critique:', critiqueInput)
+
+    try {
+      // Save critique as a memory to improve future responses
+      await axios.post('/api/memory', {
+        userId,
+        content: `User feedback: I wouldn't respond like "${messages[messageIdx].content.substring(0, 100)}...". Instead, I would say: "${critiqueInput}"`,
+        category: 'correction',
+        action: 'add'
+      })
+
+      console.log('✅ Critique saved as memory')
+      
+      // Show success message
+      alert('✅ Feedback saved! I\'ll respond more accurately next time.')
+      
+      // Reset critique state
+      setCritiquingIdx(null)
+      setCritiqueInput('')
+    } catch (error) {
+      console.error('❌ Failed to save critique:', error)
+      alert('Failed to save feedback. Please try again.')
+    }
+  }
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return
 
@@ -566,7 +604,7 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg p-4 ${
@@ -576,9 +614,48 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
                   }`}
                 >
                   <p className="text-sm">{message.content}</p>
-                  
-                  {/* Audio auto-plays when response arrives - no button needed */}
                 </div>
+                
+                {/* Critique button for assistant messages (not the initial message) */}
+                {message.role === 'assistant' && idx > 0 && (
+                  <div className="mt-2 max-w-[80%] w-full">
+                    {critiquingIdx === idx ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={critiqueInput}
+                          onChange={(e) => setCritiqueInput(e.target.value)}
+                          placeholder="I would respond: ..."
+                          className="w-full bg-dark-bg border border-white/30 rounded-lg p-3 text-white text-sm focus:border-white focus:outline-none"
+                          rows={2}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleCritique(idx)}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-xs hover:bg-blue-600 transition-colors"
+                          >
+                            Submit Feedback
+                          </button>
+                          <button
+                            onClick={() => {
+                              setCritiquingIdx(null)
+                              setCritiqueInput('')
+                            }}
+                            className="px-4 py-2 bg-transparent border border-white/30 text-white rounded-lg text-xs hover:bg-white/10 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setCritiquingIdx(idx)}
+                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                      >
+                        ✏️ I wouldn't respond like this...
+                      </button>
+                    )}
+                  </div>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>
