@@ -82,3 +82,4 @@ Thumbs.db
 *.key
 *.p12
 
+*.hprof

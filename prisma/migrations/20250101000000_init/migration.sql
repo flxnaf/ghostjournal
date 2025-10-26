@@ -23,9 +23,9 @@ CREATE TABLE "User" (
 
 -- CreateTable
 CREATE TABLE "Memory" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "userId" TEXT NOT NULL,
+    "userId" UUID NOT NULL,
     "content" TEXT NOT NULL,
     "embedding" TEXT NOT NULL,
     "category" TEXT,
@@ -35,9 +35,9 @@ CREATE TABLE "Memory" (
 
 -- CreateTable
 CREATE TABLE "Conversation" (
-    "id" TEXT NOT NULL,
+    "id" UUID NOT NULL DEFAULT gen_random_uuid(),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "userId" TEXT NOT NULL,
+    "userId" UUID NOT NULL,
     "role" TEXT NOT NULL,
     "content" TEXT NOT NULL,
     "audioUrl" TEXT,

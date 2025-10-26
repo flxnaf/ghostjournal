@@ -1,8 +1,6 @@
 package com.digitaltwins.advanced.entity
 
 import com.digitaltwins.DigitalTwinsMod
-import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder
-import net.minecraft.entity.EntityDimensions
 import net.minecraft.entity.EntityType
 import net.minecraft.entity.SpawnGroup
 import net.minecraft.registry.Registries
@@ -20,11 +18,13 @@ object ModEntities {
     val TWIN_ENTITY: EntityType<TwinEntity> = Registry.register(
         Registries.ENTITY_TYPE,
         Identifier(DigitalTwinsMod.MOD_ID, "twin"),
-        FabricEntityTypeBuilder.create(SpawnGroup.CREATURE, ::TwinEntity)
-            .dimensions(EntityDimensions.fixed(0.6f, 1.95f)) // Player size
-            .trackRangeChunks(10)
-            .trackedUpdateRate(3)
-            .build()
+        EntityType.Builder.create({ entityType: EntityType<TwinEntity>, world: net.minecraft.world.World ->
+            TwinEntity(entityType, world)
+        }, SpawnGroup.CREATURE)
+            .setDimensions(0.6f, 1.95f) // Player size
+            .maxTrackingRange(10)
+            .trackingTickInterval(3)
+            .build("twin")
     )
 
     /**

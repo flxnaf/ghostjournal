@@ -1,6 +1,6 @@
 package com.digitaltwins.advanced.client
 
-import com.digitaltwins.DigitalTwinsMod
+import com.digitaltwins.SkinCache
 import com.digitaltwins.advanced.entity.TwinEntity
 import net.minecraft.client.render.entity.EntityRendererFactory
 import net.minecraft.client.render.entity.MobEntityRenderer
@@ -9,7 +9,7 @@ import net.minecraft.client.render.entity.model.PlayerEntityModel
 import net.minecraft.util.Identifier
 
 /**
- * Renderer for TwinEntity - uses player model for familiar appearance
+ * Renderer for TwinEntity - uses player model with custom Minecraft skins
  */
 class TwinRenderer(context: EntityRendererFactory.Context) :
     MobEntityRenderer<TwinEntity, PlayerEntityModel<TwinEntity>>(
@@ -20,12 +20,13 @@ class TwinRenderer(context: EntityRendererFactory.Context) :
 
     /**
      * Get texture for the entity
-     * Using default Steve skin for now
-     * TODO: Could load custom skins from twin face data
+     * Uses user's Minecraft skin if linked, otherwise Steve
      */
     override fun getTexture(entity: TwinEntity): Identifier {
-        // Use default Steve skin
-        // In future, could generate custom texture from face data
-        return Identifier("minecraft", "textures/entity/steve.png")
+        // Use Minecraft skin if available, fallback to Steve
+        return SkinCache.getSkin(
+            entity.minecraftSkinUrl,
+            entity.twinName
+        )
     }
 }

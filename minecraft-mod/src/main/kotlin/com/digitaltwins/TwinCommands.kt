@@ -84,10 +84,35 @@ object TwinCommands {
     }
 
     /**
-     * Import a twin from URL or file path
+     * Import a twin from URL, username, or file path
+     *
+     * Supports:
+     * - Full URL: https://replik.tech/api/minecraft/export/USER_ID
+     * - Username with @: @alex
+     * - Username without @: alex
      */
-    private fun importTwin(context: CommandContext<ServerCommandSource>, url: String) {
+    private fun importTwin(context: CommandContext<ServerCommandSource>, urlOrUsername: String) {
         val player = context.source.player ?: return
+
+        // Determine the final URL
+        val finalUrl = when {
+            // Full URL provided
+            urlOrUsername.startsWith("http") -> urlOrUsername
+
+            // Username with @ prefix
+            urlOrUsername.startsWith("@") -> {
+                val username = urlOrUsername.substring(1)
+                "https://replik.tech/api/minecraft/export/username/$username"
+            }
+
+            // Plain username (assume it's a username, not a UUID)
+            !urlOrUsername.contains("/") && !urlOrUsername.contains(".") -> {
+                "https://replik.tech/api/minecraft/export/username/$urlOrUsername"
+            }
+
+            // File path or other
+            else -> urlOrUsername
+        }
 
         // Show loading message
         player.sendMessage(Text.literal("§e⏳ Downloading twin data..."), false)
@@ -95,7 +120,7 @@ object TwinCommands {
         // Download async to not block game
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val twinData = TwinAPI.downloadTwin(url)
+                val twinData = TwinAPI.downloadTwin(finalUrl)
                 TwinStorage.addTwin(twinData)
 
                 // Success message on main thread
@@ -104,6 +129,14 @@ object TwinCommands {
                         Text.literal("§a✓ Loaded twin: ${twinData.display_name}"),
                         false
                     )
+
+                    // Show skin status if available
+                    if (!twinData.minecraft_skin_url.isNullOrEmpty()) {
+                        player.sendMessage(
+                            Text.literal("§7   Minecraft skin: ${twinData.minecraft_username}"),
+                            false
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 player.server.execute {
