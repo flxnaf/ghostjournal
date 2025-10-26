@@ -60,7 +60,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
     error: null as string | null
   })
 
-  // Check if user has already given consent
+  // Check if user has already given consent and if they have audio
   useEffect(() => {
     // Skip consent for admin bypass users
     const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
@@ -70,7 +70,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       return
     }
     
-    const checkConsent = async () => {
+    const checkConsentAndData = async () => {
       console.log('🔍 Checking consent for user:', user.id)
       try {
         const response = await axios.get(`/api/user-consent?userId=${user.id}`)
@@ -78,6 +78,22 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         if (response.data.hasConsent) {
           console.log('✅ User has consent, setting consentGiven=true')
           setConsentGiven(true)
+          
+          // Check if user already has audio and skip recording
+          try {
+            const userDataResponse = await axios.get(`/api/personality?userId=${user.id}`)
+            const userData = userDataResponse.data
+            
+            if (userData.audioUrl) {
+              console.log('✅ User already has audio, skipping to chat')
+              setUserId(user.id)
+              setStep('chat')
+            } else {
+              console.log('⚠️ User has no audio, staying on record step')
+            }
+          } catch (err) {
+            console.log('⚠️ Could not fetch user data, staying on record step')
+          }
         } else {
           console.log('⚠️ User has no consent, showing consent dialog')
           setShowConsent(true)
@@ -90,7 +106,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
         setShowConsent(true)
       }
     }
-    checkConsent()
+    checkConsentAndData()
   }, [user.id])
 
   const handleConsentAccept = async (consent: {
@@ -369,7 +385,11 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
               </>
             )}
             {step === 'chat' && userId && (
-              <CloneTabs userId={browsingUserId || userId} />
+              <CloneTabs 
+                userId={browsingUserId || userId} 
+                currentUserId={userId}
+                isOwner={!browsingUserId || browsingUserId === userId}
+              />
             )}
           </motion.div>
         </>
