@@ -177,12 +177,23 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       
     } catch (error: any) {
       console.error('❌ Voice training failed:', error)
-      const errorMessage = error.response?.data?.details || error.message || 'Unknown error'
+      console.error('   Error response:', error.response)
+      console.error('   Error data:', error.response?.data)
+      
+      // Determine which step failed
+      const step = error.config?.url?.includes('create-user') ? 'User Creation' :
+                   error.config?.url?.includes('voice-clone') ? 'Voice Training' : 'Unknown'
+      
+      const errorMessage = error.response?.data?.details || 
+                          error.response?.data?.error ||
+                          error.message || 
+                          'Unknown error'
+      
       setVoiceTraining({ 
         isTraining: false, 
         progress: 0, 
         status: 'Training failed - using default voice',
-        error: errorMessage
+        error: `${step}: ${errorMessage}`
       })
       
       // IMPORTANT: Still allow user to continue even if voice training failed

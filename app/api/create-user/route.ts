@@ -71,10 +71,21 @@ export async function POST(request: NextRequest) {
       message: 'User created with audio'
     })
 
-  } catch (error) {
-    console.error('Create user error:', error)
+  } catch (error: any) {
+    console.error('❌ Create user error:', error)
+    console.error('   Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      name: error.name
+    })
     return NextResponse.json(
-      { error: 'User creation failed' },
+      { 
+        error: 'User creation failed', 
+        details: error.message,
+        code: error.code,
+        meta: error.meta
+      },
       { status: 500 }
     )
   }
