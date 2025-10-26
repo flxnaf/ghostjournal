@@ -55,7 +55,7 @@ object PacketHandler {
             val audioUrl = buf.readString()
 
             client.execute {
-                TwinAudioPlayer.playAudioFromUrl(audioUrl)
+                TwinAudioPlayer.enqueue(audioUrl)
             }
         }
     }

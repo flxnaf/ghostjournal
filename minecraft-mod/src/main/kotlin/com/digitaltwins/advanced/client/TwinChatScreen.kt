@@ -162,7 +162,7 @@ class TwinChatScreen(
                         }
 
                         chatHistory.add("§a🔊 Playing voice...")
-                        TwinAudioPlayer.playAudioFromUrl(fullAudioUrl)
+                        TwinAudioPlayer.enqueue(fullAudioUrl)
                     }
 
                     isWaitingForResponse = false
