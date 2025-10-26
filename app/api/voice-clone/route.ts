@@ -131,6 +131,25 @@ export async function POST(request: NextRequest) {
       
       console.log('💾 Voice model ID saved to database:', modelId)
 
+      // PRIVACY: Delete audio file after successful training
+      // The voice model is now stored by Fish Audio, we don't need the raw audio anymore
+      console.log('🗑️ Deleting original audio file for privacy...')
+      try {
+        const { deleteAudio } = await import('@/lib/storage')
+        await deleteAudio(userId)
+        
+        // Clear audioUrl from database
+        await prisma.user.update({
+          where: { id: userId },
+          data: { audioUrl: null }
+        })
+        
+        console.log('✅ Audio file deleted for privacy')
+      } catch (deleteError) {
+        console.warn('⚠️ Could not delete audio file:', deleteError)
+        // Don't fail the request if deletion fails
+      }
+
       return NextResponse.json({ 
         modelId: modelId, 
         status: 'training',
