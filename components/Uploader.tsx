@@ -13,13 +13,15 @@ interface UploaderProps {
     isTraining: boolean
     progress: number
     status: string
+    error: string | null
   }
   onComplete: (userId: string) => void
+  onReRecord?: () => void
 }
 
 const PHOTO_LABELS = ['Front']
 
-export default function Uploader({ audioBlob, userId, voiceTraining, onComplete }: UploaderProps) {
+export default function Uploader({ audioBlob, userId, voiceTraining, onComplete, onReRecord }: UploaderProps) {
   const [photos, setPhotos] = useState<(File | null)[]>([null])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -506,22 +508,45 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
         {/* Voice Training Progress */}
         <div>
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-white font-medium">{voiceTraining.status}</span>
+            <span className={`font-medium ${voiceTraining.error ? 'text-red-400' : 'text-white'}`}>
+              {voiceTraining.status}
+            </span>
             <span className="text-white font-bold">{Math.round(voiceTraining.progress)}%</span>
           </div>
           <div className="w-full h-4 bg-dark-bg rounded-full overflow-hidden border border-white/30">
             <motion.div
-              className="h-full bg-white"
+              className={`h-full ${voiceTraining.error ? 'bg-red-400' : 'bg-white'}`}
               initial={{ width: 0 }}
               animate={{ width: `${voiceTraining.progress}%` }}
               transition={{ duration: 0.3 }}
             />
           </div>
-          <p className="mt-2 text-xs text-gray-400 text-center">
-            {voiceTraining.progress === 100
-              ? "✅ Voice model ready! Continue with photos below."
-              : "Training your custom S1 voice model..."}
-          </p>
+          
+          {voiceTraining.error ? (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-red-400 text-center">
+                ❌ Error: {voiceTraining.error}
+              </p>
+              <p className="text-xs text-gray-400 text-center">
+                You can continue without voice training or re-record
+              </p>
+              {onReRecord && (
+                <button
+                  onClick={onReRecord}
+                  className="w-full py-2 px-4 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                           hover:bg-white/10 transition-colors"
+                >
+                  🎤 Re-record Voice
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-gray-400 text-center">
+              {voiceTraining.progress === 100
+                ? "✅ Voice model ready! Continue with photos below."
+                : "Training your custom S1 voice model..."}
+            </p>
+          )}
         </div>
       </motion.div>
 

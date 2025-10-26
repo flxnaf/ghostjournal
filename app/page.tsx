@@ -56,7 +56,8 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   const [voiceTraining, setVoiceTraining] = useState({
     isTraining: false,
     progress: 0,
-    status: 'Not started'
+    status: 'Not started',
+    error: null as string | null
   })
 
   // Check if user has already given consent
@@ -172,9 +173,15 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
       
       console.log('✅ Voice training complete:', voiceResponse.data.modelId)
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Voice training failed:', error)
-      setVoiceTraining({ isTraining: false, progress: 0, status: 'Training failed - using default voice' })
+      const errorMessage = error.response?.data?.details || error.message || 'Unknown error'
+      setVoiceTraining({ 
+        isTraining: false, 
+        progress: 0, 
+        status: 'Training failed - using default voice',
+        error: errorMessage
+      })
       
       // IMPORTANT: Still allow user to continue even if voice training failed
       // Set a temporary userId so they can proceed to the upload step
@@ -188,6 +195,18 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
   const handleUploadComplete = (id: string) => {
     setUserId(id)
     setStep('chat')
+  }
+
+  const handleReRecord = () => {
+    setStep('record')
+    setAudioBlob(null)
+    setUserId(null)
+    setVoiceTraining({
+      isTraining: false,
+      progress: 0,
+      status: 'Not started',
+      error: null
+    })
   }
 
   return (
@@ -249,6 +268,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
           user={user}
           onCreateCharacter={() => setView('character')}
           onBrowseClones={() => setView('browse')}
+          onLogout={logout}
         />
       )}
 
@@ -317,6 +337,7 @@ function AuthenticatedApp({ user, logout }: { user: any, logout: () => void }) {
                     userId={userId}
                     voiceTraining={voiceTraining}
                     onComplete={handleUploadComplete}
+                    onReRecord={handleReRecord}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center p-12 bg-dark-surface rounded-lg glow-border">

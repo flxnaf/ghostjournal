@@ -116,20 +116,16 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }, [supabase.auth])
 
   const signup = async (email: string, password: string, name?: string) => {
-    // For admin bypass, name is actually the username
+    // name is the username
     const username = name
-    const displayName = email // In signup form, we swapped these
-    
-    // Create email from username if not provided
-    const userEmail = displayName && displayName.includes('@') ? displayName : `${username}@replik.local`
     
     const { data, error } = await supabase.auth.signUp({
-      email: userEmail,
+      email: email, // Use real email now
       password,
       options: {
         data: {
           username: username,
-          name: displayName || username
+          name: username // Store username as display name
         }
       }
     })
@@ -145,13 +141,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     }
   }
 
-  const login = async (emailOrUsername: string, password: string) => {
-    // Determine if input is email or username
-    const isEmail = emailOrUsername.includes('@')
-    const loginEmail = isEmail ? emailOrUsername : `${emailOrUsername}@replik.local`
-    
+  const login = async (email: string, password: string) => {
     const { data, error} = await supabase.auth.signInWithPassword({
-      email: loginEmail,
+      email: email,
       password
     })
 
