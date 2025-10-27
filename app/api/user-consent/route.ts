@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createRouteHandlerClient } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -12,11 +12,47 @@ const prisma = new PrismaClient()
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user
-    const supabase = createServerSupabaseClient()
+    // Check for admin bypass
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+    const adminBypassId = '00000000-0000-0000-0000-000000000001'
+    
+    // If admin bypass user, use that ID
+    if (userId === adminBypassId) {
+      console.log('🔑 Admin bypass detected in user-consent GET')
+      const authUser = { id: adminBypassId }
+      
+      // Rest of the logic continues with authUser
+      const user = await prisma.user.findUnique({
+        where: { id: authUser.id },
+        select: {
+          consentAudio: true,
+          consentChat: true,
+          consentContext: true,
+          consentFaceData: true,
+          consentTimestamp: true
+        }
+      })
+
+      const hasConsent = user && user.consentTimestamp !== null
+
+      return NextResponse.json({
+        hasConsent,
+        consent: user || {
+          consentAudio: false,
+          consentChat: false,
+          consentContext: false,
+          consentFaceData: false
+        }
+      })
+    }
+    
+    // Get authenticated user from Supabase
+    const { supabase } = createRouteHandlerClient(request)
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !authUser) {
+      console.error('Auth error in user-consent:', authError)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

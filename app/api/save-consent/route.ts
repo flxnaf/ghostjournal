@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createRouteHandlerClient } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -13,10 +13,11 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user
-    const supabase = createServerSupabaseClient()
+    const { supabase } = createRouteHandlerClient(request)
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !authUser) {
+      console.error('Auth error in save-consent:', authError)
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

@@ -31,6 +31,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name?: string) => Promise<void>
+  loginWithGoogle: () => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -146,25 +147,45 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     // name is the username
     const username = name
     
+    console.log('🔐 Attempting signup:', { email, username })
+    
     const { data, error } = await supabase.auth.signUp({
-      email: email, // Use real email now
+      email: email,
       password,
       options: {
         data: {
           username: username,
-          name: username // Store username as display name
-        }
+          name: username
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`
       }
     })
 
     if (error) {
+      console.error('❌ Signup error:', error)
       throw new Error(error.message)
     }
 
-    if (data.user) {
+    console.log('✅ Signup response:', { 
+      user: data.user?.id, 
+      session: data.session ? 'exists' : 'null',
+      emailConfirmationSent: !data.session && data.user ? 'yes' : 'no'
+    })
+
+    // If email confirmation is required, redirect to confirmation page
+    if (data.user && !data.session) {
+      console.log('📧 Email confirmation required - redirecting...')
+      const confirmUrl = `${window.location.origin}/auth/confirm?email=${encodeURIComponent(email)}`
+      window.location.href = confirmUrl
+      return
+    }
+
+    // If session exists (email confirmation disabled), set user immediately
+    if (data.user && data.session) {
       const user = convertSupabaseUser(data.user)
       user.username = username
       setUser(user)
+      console.log('✅ User set in state:', user.id)
     }
   }
 
@@ -181,6 +202,33 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     if (data.user) {
       setUser(convertSupabaseUser(data.user))
     }
+  }
+
+  const loginWithGoogle = async () => {
+    console.log('🔐 Attempting Google sign-in')
+    
+    // Use the actual current origin (works for both localhost and production)
+    const redirectUrl = `${window.location.origin}/auth/callback`
+    console.log('📍 Redirect URL:', redirectUrl)
+    
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        }
+      }
+    })
+
+    if (error) {
+      console.error('❌ Google sign-in error:', error)
+      throw new Error(error.message)
+    }
+
+    console.log('✅ Redirecting to Google...')
+    // User will be redirected to Google, then back to /auth/callback
   }
 
   const logout = async () => {
@@ -204,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, signup, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   )
