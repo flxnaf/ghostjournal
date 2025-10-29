@@ -1,17 +1,17 @@
-# 🎮 Minecraft Integration Guide
+# Minecraft Integration Guide
 
 ## Overview
 
 The EchoSelf Minecraft mod brings your digital twins into Minecraft with **two modes**:
 
-1. **MVP Mode** - Command-based with voice playback ✅ **IMPLEMENTED**
-2. **Advanced Mode** - GUI-based with custom entities 🚧 **IN DEVELOPMENT**
+1. **MVP Mode** - Command-based with voice playback (IMPLEMENTED)
+2. **Advanced Mode** - GUI-based with custom entities (IN DEVELOPMENT)
 
-Both modes feature full voice playback using Fish Audio TTS!
+Both modes feature full voice playback using Fish Audio TTS.
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -40,7 +40,7 @@ Both modes feature full voice playback using Fish Audio TTS!
 
 ---
 
-## 📋 MVP Mode (Commands + Voice)
+## MVP Mode (Commands + Voice)
 
 ### Commands
 
@@ -85,14 +85,14 @@ Chat with a twin and hear their voice!
 **What happens:**
 1. Message sent to API (3-5 second wait)
 2. Text response appears: `[Alex Chen] Oh man, spicy ramen for sure!`
-3. 🔊 **Voice plays through speakers!**
+3. **Voice plays through speakers!**
 
 #### `/twinremove <name>`
 Despawn a twin NPC.
 
 ---
 
-## 🎯 Advanced Mode (GUI + Custom Entities)
+## Advanced Mode (GUI + Custom Entities)
 
 ### Features
 
@@ -116,11 +116,11 @@ Despawn a twin NPC.
    - Right-click NPC
    - GUI opens
    - Type message, press Enter
-   - 🔊 Voice response plays!
+   - Voice response plays!
 
 ---
 
-## 🔊 Voice Playback
+## Voice Playback
 
 Both modes feature full voice synthesis:
 
@@ -138,12 +138,12 @@ Response: {
   "audioUrl": "/uploads/.../response.mp3"
 }
    ↓
-🔊 MP3 plays in Minecraft!
+MP3 plays in Minecraft!
 ```
 
 ---
 
-## 🛠️ Building from Source
+## Building from Source
 
 ```bash
 cd minecraft-mod
@@ -160,7 +160,7 @@ ls build/libs/digitaltwins-1.0.0.jar
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### "Twin not found"
 **Solution:** Run `/twinimport <url>` first
@@ -188,12 +188,14 @@ ls build/libs/digitaltwins-1.0.0.jar
 
 ---
 
-## 📊 API Endpoints
+## API Endpoints
 
 ### Export API (Web App)
-**Download Clone JSON** - Click "Export JSON" button in the web app
+**Download Clone JSON** - Two ways to export your clone data:
+1. Visit the **Minecraft Integration page** (`/minecraft`) and click "Download Twin Data" button
+2. Use the "Export JSON" button in the **Build Context** tab of the main app
 
-**Downloaded File:** `username_clone.json`
+**Downloaded File:** `twin-username.json` or `username_clone.json`
 
 **Structure:**
 ```json
@@ -271,7 +273,7 @@ ls build/libs/digitaltwins-1.0.0.jar
 
 ---
 
-## 🎤 Fish Audio API Integration
+## Fish Audio API Integration
 
 ### Option 1: Use Replik's `/api/speak` Endpoint (Recommended)
 This is the easiest way - just send the `userId` and the API handles everything:
@@ -359,7 +361,7 @@ val audioBytes = response.readBytes()
 
 ---
 
-## 🎓 Technical Details
+## Technical Details
 
 ### Tech Stack
 
@@ -396,53 +398,22 @@ minecraft-mod/
 
 ---
 
-## 🎉 Demo for Cal Hacks
 
-### Perfect Demo Flow
-
-1. **Web App** (30 seconds)
-   - "I created my digital twin with my voice"
-   - Show `/minecraft` page
-   - Copy export URL
-
-2. **Minecraft** (2 minutes)
-   - `/twinimport https://...`
-   - "Downloaded personality and voice model"
-   - `/twinspawn Alex`
-   - NPC appears
-
-3. **The Magic** (1 minute)
-   - `/twin Alex What's your favorite food?`
-   - Wait 3-5 seconds...
-   - **Text + VOICE response!** 🔊
-   - "That's my actual voice, cloned with AI!"
-
-4. **Explain Tech** (1 minute)
-   - "Claude AI for personality"
-   - "Fish Audio for voice cloning"
-   - "Real-time integration"
-
-**Judge reaction: 🤯**
-
----
-
-## 📝 What's Next
+## What's Next
 
 ### Planned Features
-- ✅ Voice playback - **DONE!**
-- 🚧 Custom entities - **In progress**
-- 🚧 GUI chat screen - **In progress**
-- 🚧 Spawn eggs - **In progress**
-- ⏳ Multiple players - **Planned**
-- ⏳ Offline caching - **Planned**
+- Voice playback - **DONE!**
+- Custom entities - **In progress**
+- GUI chat screen - **In progress**
+- Spawn eggs - **In progress**
+- Multiple players - **Planned**
+- Offline caching - **Planned**
 
 ---
 
-## 🙏 Credits
+## Credits
 
 - **Fabric** - Mod framework
 - **Kotlin** - Programming language
 - **Anthropic Claude** - AI personality
 - **Fish Audio** - Voice cloning
-
-Built for **Cal Hacks 12.0** 🚀

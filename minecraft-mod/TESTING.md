@@ -281,7 +281,7 @@ If everything works:
 2. ✅ Push to GitHub
 3. ✅ Test end-to-end one more time
 4. ✅ Prepare demo for judges
-5. 🚀 Win Cal Hacks!
+5. Deploy successfully!
 
 ---
 
