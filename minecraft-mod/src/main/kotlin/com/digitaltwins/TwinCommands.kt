@@ -103,12 +103,13 @@ object TwinCommands {
      * Import a twin from URL, username, or file path
      *
      * Supports:
-     * - Full URL: https://replik.tech/api/minecraft/export/USER_ID
+     * - Full URL: https://your-domain.com/api/minecraft/export/USER_ID
      * - Username with @: @alex
      * - Username without @: alex
      */
     private fun importTwin(context: CommandContext<ServerCommandSource>, urlOrUsername: String) {
         val player = context.source.player ?: return
+        val apiBaseUrl = TwinConfig.getApiBaseUrl()
 
         // Determine the final URL
         val finalUrl = when {
@@ -118,12 +119,12 @@ object TwinCommands {
             // Username with @ prefix
             urlOrUsername.startsWith("@") -> {
                 val username = urlOrUsername.substring(1)
-                "https://replik.tech/api/minecraft/export/username/$username"
+                "$apiBaseUrl/api/minecraft/export/username/$username"
             }
 
             // Plain username (assume it's a username, not a UUID)
             !urlOrUsername.contains("/") && !urlOrUsername.contains(".") -> {
-                "https://replik.tech/api/minecraft/export/username/$urlOrUsername"
+                "$apiBaseUrl/api/minecraft/export/username/$urlOrUsername"
             }
 
             // File path or other

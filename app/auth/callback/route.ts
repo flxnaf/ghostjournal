@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       console.error('❌ OAuth callback error:', error)
       console.error('   Error details:', error.message, error.status)
       // Redirect to error page or home with error
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://replik.tech'
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${requestUrl.protocol}//${requestUrl.host}`
       return NextResponse.redirect(new URL('/?error=auth_failed', baseUrl))
     }
     
@@ -78,8 +78,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Redirect to home page after successful confirmation
-  // Use production URL to avoid proxy/localhost issues
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://replik.tech'
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${requestUrl.protocol}//${requestUrl.host}`
   return NextResponse.redirect(new URL(next, baseUrl))
 }
 

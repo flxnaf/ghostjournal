@@ -163,7 +163,7 @@ Replik makes this possible. We built a platform where you can train an AI clone 
 ## 🎮 Try It Out!
 
 ### Web Platform
-1. Visit: `https://replik.tech` (or your Railway domain)
+1. Visit: `https://your-domain.com` (or your Railway domain)
 2. Sign up with username/email/password
 3. Record 30 seconds of audio
 4. Add context (stories, habits, reactions)

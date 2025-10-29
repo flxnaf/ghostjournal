@@ -37,7 +37,7 @@ object TwinConfig {
             configFile.parentFile?.mkdirs()
             configFile.writeText("""
 # Digital Twins Minecraft Mod Configuration
-# https://replik.tech
+# Documentation: See README.md in the minecraft-mod directory
 
 # Fish Audio API Key (REQUIRED for voice)
 # Get your key from: https://fish.audio
@@ -48,9 +48,10 @@ fishAudioApiKey=
 # This is a neutral English voice from Fish Audio
 defaultVoiceId=af1ddb5dc0e644ebb16b58ed466e27c6
 
-# API Base URL (usually your deployed site)
-# Example: https://replik.tech or http://localhost:3000
-apiBaseUrl=https://replik.tech
+# API Base URL (your deployed site URL)
+# Example: https://your-domain.com or http://localhost:3000
+# IMPORTANT: Replace with your actual deployment URL
+apiBaseUrl=http://localhost:3000
             """.trimIndent())
             println("✅ Created default config at: ${configFile.absolutePath}")
             println("⚠️ PLEASE EDIT THE CONFIG FILE AND ADD YOUR FISH AUDIO API KEY!")
@@ -89,7 +90,7 @@ apiBaseUrl=https://replik.tech
     }
     
     fun getApiBaseUrl(): String {
-        return properties.getProperty("apiBaseUrl", "https://replik.tech")
+        return properties.getProperty("apiBaseUrl", "http://localhost:3000")
     }
     
     /**
