@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-**EchoSelf** is a full-stack AI clone application that creates an interactive digital twin of users through voice cloning, visual representation, and personality modeling. Built for Cal Hacks 12.0 using cutting-edge AI APIs.
+**EchoSelf** is a full-stack AI clone application that creates an interactive digital twin of users through voice cloning, visual representation, and personality modeling using cutting-edge AI APIs.
 
 ---
 
@@ -30,7 +30,7 @@ Audio   API   DB     ORM    Storage      Agentverse
 ## 📂 Complete File Structure
 
 ```
-CalHacks/
+replik/
 ├── app/
 │   ├── api/
 │   │   ├── upload/route.ts          # Media upload handler
@@ -430,5 +430,4 @@ To extend this project:
 
 ---
 
-**Built with ❤️ for Cal Hacks 12.0**
 
