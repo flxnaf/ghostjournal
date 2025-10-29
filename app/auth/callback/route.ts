@@ -1,6 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
@@ -33,7 +36,7 @@ export async function GET(request: NextRequest) {
       }
     )
     
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (error) {
       console.error('❌ OAuth callback error:', error)
@@ -43,6 +46,34 @@ export async function GET(request: NextRequest) {
     }
     
     console.log('✅ OAuth session created successfully')
+
+    // Create or update user in Prisma database (for OAuth users)
+    if (data.user) {
+      try {
+        console.log('🔄 Creating/updating Prisma user record for OAuth user:', data.user.id)
+        
+        await prisma.user.upsert({
+          where: { id: data.user.id },
+          update: {
+            email: data.user.email,
+            name: data.user.user_metadata?.name || data.user.user_metadata?.full_name,
+            username: data.user.user_metadata?.username,
+          },
+          create: {
+            id: data.user.id,
+            email: data.user.email || '',
+            name: data.user.user_metadata?.name || data.user.user_metadata?.full_name,
+            username: data.user.user_metadata?.username,
+            photoUrls: '[]',
+          }
+        })
+        
+        console.log('✅ Prisma user record created/updated')
+      } catch (dbError) {
+        console.error('⚠️ Failed to create Prisma user record:', dbError)
+        // Don't fail the auth flow, just log the error
+      }
+    }
   }
 
   // Redirect to home page after successful confirmation
