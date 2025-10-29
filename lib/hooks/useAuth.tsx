@@ -207,8 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const loginWithGoogle = async () => {
     console.log('🔐 Attempting Google sign-in')
     
-    // Use the actual current origin (works for both localhost and production)
-    const redirectUrl = `${window.location.origin}/auth/callback`
+    // Force production URL for OAuth (prevents localhost redirect issues)
+    const redirectUrl = 'https://replik.tech/auth/callback'
     console.log('📍 Redirect URL:', redirectUrl)
     
     const { data, error } = await supabase.auth.signInWithOAuth({
