@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import axios from 'axios'
 import { writeFile, readFile, mkdir } from 'fs/promises'
 import { join } from 'path'
+import { createRouteHandlerClient } from '@/lib/supabase-server'
 
 const prisma = new PrismaClient()
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     console.log('📥 Request body:', { userId: body.userId, message: body.message?.substring(0, 50) })
-    
+
     const { userId, message, conversationHistory = [] } = body
 
     if (!userId || !message) {
@@ -30,6 +31,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'User ID and message required' },
         { status: 400 }
+      )
+    }
+
+    // AUTHENTICATION: Support both Supabase session and API key
+    const apiKey = request.headers.get('X-API-Key')
+    const validApiKey = process.env.MINECRAFT_API_KEY
+
+    // Try Supabase authentication first (for web users)
+    let isAuthenticated = false
+    try {
+      const { supabase } = createRouteHandlerClient(request)
+      const { data: { user: authUser }, error } = await supabase.auth.getUser()
+
+      if (authUser && authUser.id === userId) {
+        console.log('✅ Authenticated via Supabase session')
+        isAuthenticated = true
+      }
+    } catch (authError) {
+      console.log('⚠️ Supabase auth check failed, trying API key...')
+    }
+
+    // Fallback to API key authentication (for Minecraft mod)
+    if (!isAuthenticated && apiKey && validApiKey && apiKey === validApiKey) {
+      console.log('✅ Authenticated via API key')
+      isAuthenticated = true
+    }
+
+    // If neither authentication method worked, reject the request
+    if (!isAuthenticated) {
+      console.error('❌ Authentication failed')
+      return NextResponse.json(
+        {
+          error: 'Unauthorized',
+          details: 'You must be authenticated to use this endpoint. Either log in or provide a valid API key.'
+        },
+        { status: 401 }
       )
     }
 
