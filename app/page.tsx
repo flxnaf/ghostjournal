@@ -68,8 +68,7 @@ function AuthenticatedApp({ user: initialUser, logout }: { user: any, logout: ()
 
   // Refresh user's isPublic status when returning to dashboard
   useEffect(() => {
-    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
-    if (view === 'dashboard' && !isAdminBypass) {
+    if (view === 'dashboard') {
       console.log('🔄 Refreshing user data for dashboard...')
       console.log('   Current user.isPublic:', user.isPublic)
       axios.get(`/api/personality?userId=${user.id}`)
@@ -98,14 +97,6 @@ function AuthenticatedApp({ user: initialUser, logout }: { user: any, logout: ()
 
   // Check if user has already given consent and if they have audio
   useEffect(() => {
-    // Skip consent for admin bypass users
-    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
-    if (isAdminBypass) {
-      console.log('🔑 Admin bypass - skipping consent')
-      setConsentGiven(true)
-      return
-    }
-    
     const checkConsentAndData = async () => {
       console.log('🔍 Checking consent for user:', user.id)
       try {
@@ -175,24 +166,8 @@ function AuthenticatedApp({ user: initialUser, logout }: { user: any, logout: ()
     // Move to upload page IMMEDIATELY (don't wait for training)
     console.log('➡️ Moving to upload step...')
     setStep('upload')
-    
-    // Check if admin bypass - skip database operations
-    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
-    
-    if (isAdminBypass) {
-      console.log('🔑 Admin bypass - using mock userId')
-      // Use the user's admin ID directly, no database needed
-      setUserId(user.id)
-      setVoiceTraining({ 
-        isTraining: false, 
-        progress: 100, 
-        status: 'Admin mode - voice training skipped',
-        error: null
-      })
-      return
-    }
-    
-    // Start voice training in background (for real users)
+
+    // Start voice training in background
     console.log('🎤 Recording complete, starting voice training...')
     setVoiceTraining({ isTraining: true, progress: 10, status: 'Uploading audio...', error: null })
     

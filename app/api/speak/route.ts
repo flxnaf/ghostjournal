@@ -33,60 +33,47 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user data (or use admin bypass)
+    // Get user data
     console.log('🔍 Looking up user:', userId)
     console.log('   Full user ID:', userId)
-    
-    // Admin bypass: Allow testing without database
-    const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
-    let user: any
-    
-    if (isAdminUser) {
-      console.log('🔑 Admin user detected - using mock profile')
-      user = {
-        id: userId,
-        voiceModelId: null, // Will use Fish Audio default voice
-        personalityData: null, // Will use default personality prompt
-        email: 'admin@replik.local',
-        name: 'Admin User'
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        voiceModelId: true,
+        audioUrl: true,
+        personalityData: true,
+        name: true,
+        email: true,
+        username: true
       }
-    } else {
-      user = await prisma.user.findUnique({ 
-        where: { id: userId },
-        select: {
-          id: true,
-          voiceModelId: true,
-          audioUrl: true,
-          personalityData: true,
-          name: true,
-          email: true,
-          username: true
-        }
-      })
+    })
+
     if (!user) {
       console.error('❌ User not found:', userId)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
     console.log('✅ User found')
-      console.log('   User name:', user.name || user.username)
-      console.log('   User email:', user.email)
-      console.log('═══════════════════════════════════════════')
-      console.log('🎤 VOICE MODEL CHECK FROM DATABASE:')
-      console.log('   voiceModelId:', user.voiceModelId || 'NULL')
-      console.log('   audioUrl:', user.audioUrl || 'NULL')
-      console.log('   voiceModelId type:', typeof user.voiceModelId)
-      console.log('   voiceModelId length:', user.voiceModelId?.length || 0)
-      console.log('   First 50 chars:', user.voiceModelId?.substring(0, 50) || 'N/A')
-      console.log('═══════════════════════════════════════════')
-    }
+    console.log('   User name:', user.name || user.username)
+    console.log('   User email:', user.email)
+    console.log('═══════════════════════════════════════════')
+    console.log('🎤 VOICE MODEL CHECK FROM DATABASE:')
+    console.log('   voiceModelId:', user.voiceModelId || 'NULL')
+    console.log('   audioUrl:', user.audioUrl || 'NULL')
+    console.log('   voiceModelId type:', typeof user.voiceModelId)
+    console.log('   voiceModelId length:', user.voiceModelId?.length || 0)
+    console.log('   First 50 chars:', user.voiceModelId?.substring(0, 50) || 'N/A')
+    console.log('═══════════════════════════════════════════')
 
     // Check for keyword commands to update context
     const lowerMessage = message.toLowerCase()
-    
-    // Handle "i have new stories:" or similar context updates (skip for admin)
-    if (!isAdminUser && (lowerMessage.includes('i have new stor') || lowerMessage.includes('new story:') || 
+
+    // Handle "i have new stories:" or similar context updates
+    if (lowerMessage.includes('i have new stor') || lowerMessage.includes('new story:') ||
         lowerMessage.includes('i have new habit') || lowerMessage.includes('new habit:') ||
-        lowerMessage.includes('i have new reaction') || lowerMessage.includes('new reaction:'))) {
+        lowerMessage.includes('i have new reaction') || lowerMessage.includes('new reaction:')) {
       
       console.log('📝 Detected context update keyword, adding to memories...')
       
@@ -232,8 +219,7 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
     const audioUrl = await generateVoice(user.voiceModelId, responseText, userId)
     console.log('✅ Voice generated:', audioUrl || 'No audio (Fish API not configured)')
 
-    // Store conversation (skip for admin)
-    if (!isAdminUser) {
+    // Store conversation
     await prisma.conversation.create({
       data: {
         userId,
@@ -272,7 +258,6 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
           .then(() => console.log('✅ Stored in memory'))
           .catch(err => console.warn('⚠️ Memory storage failed:', err))
       }
-    }
 
     console.log('🎉 Response complete!')
     const responseData = {

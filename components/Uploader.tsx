@@ -133,26 +133,6 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete,
       return
     }
 
-    // Check if admin bypass - skip all processing
-    const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
-    
-    if (isAdminBypass) {
-      console.log('🔑 Admin bypass - skipping face processing and database')
-      setUploading(true)
-      setProgress(50)
-      
-      // Simulate processing
-      setTimeout(() => {
-        setProgress(100)
-        setTimeout(() => {
-          setUploading(false)
-          onComplete(userId)
-        }, 500)
-      }, 1000)
-      
-      return
-    }
-
     setUploading(true)
     setProcessingFace(true)
     setProgress(0)

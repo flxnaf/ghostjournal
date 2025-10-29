@@ -68,24 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
   // Check for existing session on mount
   useEffect(() => {
-    // Check for admin bypass first
-    const isAdminBypass = localStorage.getItem('adminBypass')
-    const adminUserStr = localStorage.getItem('adminUser')
-    
-    if (isAdminBypass === 'true' && adminUserStr) {
-      console.log('🔑 Admin bypass detected')
-      try {
-        const adminUser = JSON.parse(adminUserStr)
-        setUser(adminUser)
-        setIsLoading(false)
-        return
-      } catch (error) {
-        console.error('Error parsing admin user:', error)
-        localStorage.removeItem('adminBypass')
-        localStorage.removeItem('adminUser')
-      }
-    }
-    
     // Check if Supabase is properly configured
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
@@ -232,22 +214,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }
 
   const logout = async () => {
-    // Check if this is an admin bypass session
-    const isAdminBypass = localStorage.getItem('adminBypass')
-    
-    if (isAdminBypass === 'true') {
-      localStorage.removeItem('adminBypass')
-      localStorage.removeItem('adminUser')
-      setUser(null)
-      return
-    }
-    
     const { error } = await supabase.auth.signOut()
-    
+
     if (error) {
       console.error('Error signing out:', error)
     }
-    
+
     setUser(null)
   }
 
