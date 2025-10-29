@@ -235,7 +235,7 @@ ls build/libs/digitaltwins-1.0.0.jar
     "createdAt": "2025-10-25T00:00:00.000Z",
     "minecraftIntegration": {
       "howToUse": "See MINECRAFT_INTEGRATION.md in the Replik repo",
-      "apiUrl": "https://replik.tech/api/speak",
+      "apiUrl": "https://your-domain.com/api/speak",
       "requiresInternet": true
     }
   }
@@ -284,7 +284,7 @@ This is the easiest way - just send the `userId` and the API handles everything:
 
 **Example:**
 ```kotlin
-val response = httpClient.post("https://replik.tech/api/speak") {
+val response = httpClient.post("https://your-domain.com/api/speak") {
     contentType(ContentType.Application.Json)
     setBody("""{"userId":"$userId","message":"$message"}""")
 }
