@@ -285,7 +285,7 @@ The mod is designed for easy extension:
 
 ## Demo Script
 
-**For Cal Hacks judges:**
+**For reviewers:**
 
 1. **Show web app** - "I created my digital twin with voice and personality"
 2. **Import in Minecraft** - `/twinimport https://...`
@@ -300,7 +300,6 @@ MIT License
 
 ## Credits
 
-Built for Cal Hacks 12.0
 - Fabric mod framework
 - Anthropic Claude API (personality)
 - Fish Audio API (voice cloning)

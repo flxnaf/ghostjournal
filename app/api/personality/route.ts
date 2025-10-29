@@ -43,26 +43,6 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Admin bypass
-    const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
-    if (isAdminUser) {
-      console.log('🔑 Admin user - returning mock personality data')
-      return NextResponse.json({
-        personalityData: JSON.stringify({
-          stories: 'I like to test things',
-          habits: 'I test features regularly',
-          reactions: 'I stay calm when debugging',
-          background: 'Admin test user'
-        }),
-        audioUrl: null,
-        voiceModelId: null,
-        faceData: null,
-        name: 'Admin User',
-        email: 'admin@replik.local',
-        createdAt: new Date().toISOString()
-      })
-    }
-
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -105,22 +85,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 })
     }
 
-    // Admin bypass for personality updates
-    const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
-    
     // If personalityData is provided, save it directly (from ContextBuilder)
     if (personalityData) {
       console.log('💾 Saving personality data for user:', userId)
-      
-      if (!isAdminUser) {
-        await prisma.user.update({
-          where: { id: userId },
-          data: { personalityData: JSON.stringify(personalityData) }
-        })
-      } else {
-        console.log('🔑 Admin user - skipping database save')
-      }
-      
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { personalityData: JSON.stringify(personalityData) }
+      })
+
       return NextResponse.json({ 
         success: true,
         message: 'Personality data saved'

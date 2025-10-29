@@ -31,40 +31,6 @@ export default function CloneBrowser({ currentUserId, onSelectClone }: CloneBrow
 
   const loadClones = async () => {
     try {
-      // For admin bypass, show mock clones
-      const isAdminBypass = localStorage.getItem('adminBypass') === 'true'
-      
-      if (isAdminBypass) {
-        setClones([
-          {
-            userId: 'user_1',
-            username: 'techie_sam',
-            name: 'Sam Chen',
-            bio: 'Software engineer who loves AI and gaming',
-            createdAt: new Date().toISOString(),
-            isPublic: true
-          },
-          {
-            userId: 'user_2',
-            username: 'artist_maya',
-            name: 'Maya Rodriguez',
-            bio: 'Digital artist and creative thinker',
-            createdAt: new Date().toISOString(),
-            isPublic: true
-          },
-          {
-            userId: 'user_3',
-            username: 'gamer_alex',
-            name: 'Alex Johnson',
-            bio: 'Minecraft modder and game developer',
-            createdAt: new Date().toISOString(),
-            isPublic: true
-          }
-        ])
-        setLoading(false)
-        return
-      }
-
       const response = await axios.get('/api/clones')
       setClones(response.data.clones || [])
     } catch (error) {

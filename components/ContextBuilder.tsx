@@ -22,16 +22,14 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
   const [newEntry, setNewEntry] = useState({ category: 'story', content: '' })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
-  
+
   // Edit state
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
-  
-  // Check if user is admin
-  const isAdminUser = userId === '00000000-0000-0000-0000-000000000001'
+
   const STORAGE_KEY = `context_entries_${userId}`
 
-  // Load existing context from database or localStorage
+  // Load existing context from database
   useEffect(() => {
     loadContext()
   }, [userId])
@@ -40,31 +38,9 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
     console.log('═══════════════════════════════════════════════')
     console.log('🔍 ContextBuilder.loadContext() called')
     console.log('   userId:', userId)
-    console.log('   isAdminUser:', isAdminUser)
-    console.log('   STORAGE_KEY:', STORAGE_KEY)
     console.log('═══════════════════════════════════════════════')
-    
+
     try {
-      // For admin users, try localStorage first
-      if (isAdminUser) {
-        console.log('🔑 Admin user detected - checking localStorage...')
-        const cached = localStorage.getItem(STORAGE_KEY)
-        console.log('   localStorage value:', cached ? `${cached.length} chars` : 'NULL')
-        
-        if (cached) {
-          console.log('📦 Loading context from localStorage (admin mode)')
-          const parsed = JSON.parse(cached)
-          console.log('   Parsed entries:', parsed.length)
-          setEntries(parsed)
-          setLoading(false)
-          return
-        }
-        
-        console.log('   No localStorage data, will try database...')
-      } else {
-        console.log('👤 Regular user - skipping localStorage, going to database')
-      }
-      
       console.log('📥 Calling GET /api/memory...')
       console.log('   URL:', `/api/memory?userId=${userId}`)
       
@@ -126,40 +102,26 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
     setSaving(true)
     try {
       console.log('💾 Saving new entry:', newEntry.category)
-      
+
       // Save to database first (creates Memory record)
-      if (!isAdminUser) {
-        const response = await axios.post('/api/memory', {
-          userId,
-          content: newEntry.content,
-          category: newEntry.category,
-          action: 'add'
-        })
-        
-        console.log('✅ Memory saved to database:', response.data)
-        
-        // IMMEDIATELY regenerate personality with new entry
-        console.log('🔄 Regenerating personality with new entry...')
-        await axios.post('/api/personality', {
-          userId
-        })
-        console.log('✅ Personality regenerated!')
-        
-        // Reload all memories to stay in sync with database
-        await loadContext()
-      } else {
-        // Admin mode: save to localStorage only
-        console.log('🔑 Admin mode - saving to localStorage only')
-        const entry: ContextEntry = {
-          id: `entry_${Date.now()}`,
-          category: newEntry.category,
-          content: newEntry.content,
-          timestamp: new Date()
-        }
-        const updatedEntries = [...entries, entry]
-        setEntries(updatedEntries)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
-      }
+      const response = await axios.post('/api/memory', {
+        userId,
+        content: newEntry.content,
+        category: newEntry.category,
+        action: 'add'
+      })
+
+      console.log('✅ Memory saved to database:', response.data)
+
+      // IMMEDIATELY regenerate personality with new entry
+      console.log('🔄 Regenerating personality with new entry...')
+      await axios.post('/api/personality', {
+        userId
+      })
+      console.log('✅ Personality regenerated!')
+
+      // Reload all memories to stay in sync with database
+      await loadContext()
 
       // Clear form
       setNewEntry({ category: 'story', content: '' })
@@ -175,33 +137,24 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
 
   const deleteEntry = async (id: string) => {
     console.log('🗑️ Deleting entry:', id)
-    
-    // Delete from database first
-    if (!isAdminUser) {
-      try {
-        await axios.delete(`/api/memory?userId=${userId}&memoryId=${id}`)
-        console.log('✅ Memory deleted from database')
-        
-        // IMMEDIATELY regenerate personality without this entry
-        console.log('🔄 Regenerating personality after deletion...')
-        await axios.post('/api/personality', {
-          userId
-        })
-        console.log('✅ Personality regenerated!')
-        
-        // Reload all memories to stay in sync with database
-        await loadContext()
-      } catch (error) {
-        console.error('❌ Error deleting entry:', error)
-        alert('Failed to delete entry. Please try again.')
-        return
-      }
-    } else {
-      // Admin mode: delete from localStorage only
-      console.log('🔑 Admin mode - deleting from localStorage only')
-      const updatedEntries = entries.filter(e => e.id !== id)
-      setEntries(updatedEntries)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
+
+    try {
+      await axios.delete(`/api/memory?userId=${userId}&memoryId=${id}`)
+      console.log('✅ Memory deleted from database')
+
+      // IMMEDIATELY regenerate personality without this entry
+      console.log('🔄 Regenerating personality after deletion...')
+      await axios.post('/api/personality', {
+        userId
+      })
+      console.log('✅ Personality regenerated!')
+
+      // Reload all memories to stay in sync with database
+      await loadContext()
+    } catch (error) {
+      console.error('❌ Error deleting entry:', error)
+      alert('Failed to delete entry. Please try again.')
+      return
     }
   }
 
@@ -225,36 +178,26 @@ export default function ContextBuilder({ userId, username }: ContextBuilderProps
 
     console.log('💾 Saving edit for entry:', id)
     setSaving(true)
-    
+
     try {
-      if (!isAdminUser) {
-        // Update in database
-        await axios.put('/api/memory', {
-          userId,
-          memoryId: id,
-          content: editContent
-        })
-        console.log('✅ Memory updated in database')
-        
-        // IMMEDIATELY regenerate personality with updated entry
-        console.log('🔄 Regenerating personality after edit...')
-        await axios.post('/api/personality', {
-          userId
-        })
-        console.log('✅ Personality regenerated!')
-        
-        // Reload all memories to stay in sync with database
-        await loadContext()
-      } else {
-        // Admin mode: update in localStorage
-        console.log('🔑 Admin mode - updating localStorage only')
-        const updatedEntries = entries.map(e => 
-          e.id === id ? { ...e, content: editContent } : e
-        )
-        setEntries(updatedEntries)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEntries))
-      }
-      
+      // Update in database
+      await axios.put('/api/memory', {
+        userId,
+        memoryId: id,
+        content: editContent
+      })
+      console.log('✅ Memory updated in database')
+
+      // IMMEDIATELY regenerate personality with updated entry
+      console.log('🔄 Regenerating personality after edit...')
+      await axios.post('/api/personality', {
+        userId
+      })
+      console.log('✅ Personality regenerated!')
+
+      // Reload all memories to stay in sync with database
+      await loadContext()
+
       // Clear edit state
       setEditingId(null)
       setEditContent('')
