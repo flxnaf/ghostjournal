@@ -410,6 +410,9 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
       console.log('📡 Calling /api/speak...')
       console.log('📤 Sending message to /api/speak:')
       console.log('   userId:', userId)
+      console.log('   userId type:', typeof userId)
+      console.log('   userId length:', userId?.length)
+      console.log('   Is valid UUID?:', /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId))
       console.log('   message:', input.substring(0, 50))
       
       const response = await axios.post('/api/speak', {
@@ -466,9 +469,11 @@ export default function CloneChat({ userId, ownerName }: CloneChatProps) {
     } catch (error: any) {
       console.error('❌ Error sending message:', error)
       console.error('Error details:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      console.error('Full error:', JSON.stringify(error.response, null, 2))
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: error.response?.data?.details || "Sorry, I encountered an error. Please try again."
+        content: error.response?.data?.details || error.response?.data?.error || "Sorry, I encountered an error. Please try again."
       }])
     } finally {
       setIsLoading(false)
