@@ -34,19 +34,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // AUTHENTICATION: Support both Supabase session and API key
+    // AUTHENTICATION: Support Supabase session, API key, or browsing public clones
     const apiKey = request.headers.get('X-API-Key')
     const validApiKey = process.env.MINECRAFT_API_KEY
 
     // Try Supabase authentication first (for web users)
     let isAuthenticated = false
+    let authUserId: string | null = null
     try {
       const { supabase } = createRouteHandlerClient(request)
       const { data: { user: authUser }, error } = await supabase.auth.getUser()
 
-      if (authUser && authUser.id === userId) {
-        console.log('✅ Authenticated via Supabase session')
-        isAuthenticated = true
+      if (authUser) {
+        authUserId = authUser.id
+        // Allow authenticated users to chat with their own clone
+        if (authUser.id === userId) {
+          console.log('✅ Authenticated via Supabase session (own clone)')
+          isAuthenticated = true
+        } else {
+          // Check if target user's clone is public
+          const targetUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { isPublic: true }
+          })
+          if (targetUser?.isPublic) {
+            console.log('✅ Authenticated user browsing public clone')
+            isAuthenticated = true
+          }
+        }
       }
     } catch (authError) {
       console.log('⚠️ Supabase auth check failed, trying API key...')
