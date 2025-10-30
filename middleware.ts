@@ -8,9 +8,19 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  // Check if Supabase environment variables are set
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+
+  // If not configured, skip Supabase auth (return early)
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn('⚠️ Supabase not configured in middleware - skipping auth check')
+    return response
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+    supabaseUrl,
+    supabaseKey,
     {
       cookies: {
         getAll() {
@@ -33,7 +43,11 @@ export async function middleware(request: NextRequest) {
 
   // Refreshing the auth token
   // This will automatically refresh the session if it's about to expire
-  await supabase.auth.getUser()
+  try {
+    await supabase.auth.getUser()
+  } catch (error) {
+    console.error('Error refreshing auth token:', error)
+  }
 
   return response
 }

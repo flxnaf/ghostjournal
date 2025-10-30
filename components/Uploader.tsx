@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import axios from 'axios'
+import { Mic, CheckCircle, AlertCircle, Upload, BookOpen, RotateCcw, Smile } from 'lucide-react'
 import { useFaceMesh } from '@/lib/hooks/useFaceMesh'
 import { applyMediapipeToMockFace } from '@/lib/applyMediapipeToMock'
 
@@ -13,24 +14,26 @@ interface UploaderProps {
     isTraining: boolean
     progress: number
     status: string
+    error: string | null
   }
   onComplete: (userId: string) => void
+  onReRecord?: () => void
 }
 
-const PHOTO_LABELS = ['Front', 'Left', 'Right', 'Up', 'Down']
+const PHOTO_LABELS = ['Front']
 
-export default function Uploader({ audioBlob, userId, voiceTraining, onComplete }: UploaderProps) {
-  const [photos, setPhotos] = useState<(File | null)[]>([null, null, null, null, null])
+export default function Uploader({ audioBlob, userId, voiceTraining, onComplete, onReRecord }: UploaderProps) {
+  const [photos, setPhotos] = useState<(File | null)[]>([null])
   const [uploading, setUploading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [processingFace, setProcessingFace] = useState(false)
+  const [captureMode, setCaptureMode] = useState(false)
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   const [contexts, setContexts] = useState({
     story: '',
     habit: '',
     reaction: ''
   })
-  const [captureMode, setCaptureMode] = useState(false)
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -99,14 +102,9 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
             newPhotos[currentPhotoIndex] = file
             setPhotos(newPhotos)
             
-            // Move to next photo or finish
-            if (currentPhotoIndex < 4) {
-              console.log('➡️ Moving to next photo:', currentPhotoIndex + 2)
-              setCurrentPhotoIndex(currentPhotoIndex + 1)
-            } else {
-              console.log('🎉 All photos captured!')
-              stopCamera()
-            }
+            // Since we only need 1 photo, finish immediately
+            console.log('🎉 Photo captured!')
+            stopCamera()
           }
         }, 'image/jpeg', 0.9)
       }
@@ -131,7 +129,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
   const handleSubmit = async () => {
     // Validate
     if (photos.some(p => !p)) {
-      alert('Please capture or upload all 5 photos')
+      alert('Please capture or upload your photo')
       return
     }
 
@@ -254,18 +252,39 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
       setProcessingFace(false)
       setProgress(50)
 
-      console.log('📤 Step 3: Uploading face data and contexts...')
+      console.log('📤 Step 3: Uploading face data, photo, and initial context...')
 
-      // Send personalized face contours and contexts to API
+      // Upload the front photo to Supabase Storage (reuse frontPhoto from line 205)
+      let photoUrl = null
+      
+      if (validPhotos[0]) {
+        console.log('📸 Uploading profile photo to Supabase...')
+        const formData = new FormData()
+        formData.append('photo', validPhotos[0])
+        formData.append('userId', userId)
+        
+        try {
+          const photoResponse = await axios.post('/api/upload-photo', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+          photoUrl = photoResponse.data.photoUrl
+          console.log('✅ Profile photo uploaded:', photoUrl)
+        } catch (photoError) {
+          console.error('⚠️ Failed to upload photo, continuing without it:', photoError)
+        }
+      }
+
+      // Send personalized face contours, photo URL, and initial context to API
       const response = await axios.post('/api/update-user', {
         userId,
         faceContours: personalizedFace,
-        contexts
+        contexts,
+        photoUrl
       }, {
         headers: { 'Content-Type': 'application/json' }
       })
 
-      console.log('✅ Face model and context uploaded!')
+      console.log('✅ Face model, photo, and initial context uploaded!')
       setProgress(100)
       
       // Brief pause to show completion, then proceed
@@ -291,10 +310,10 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
           /* Initial State - Show Start Button */
           <div className="text-center space-y-6">
             <h2 className="text-3xl font-bold text-white mb-4">
-              Capture 5 Selfies
+              Capture Your Photo
             </h2>
             <p className="text-gray-400 mb-4">
-              We'll guide you through capturing 5 photos from different angles
+              Take a clear front-facing photo of yourself
             </p>
             
             {/* Consent Notice */}
@@ -310,28 +329,26 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               </p>
             </div>
             
-            {/* Preview of captured photos */}
-            <div className="grid grid-cols-5 gap-4 mb-8">
-              {PHOTO_LABELS.map((label, idx) => (
-                <div key={idx} className="text-center">
-                  <div className="aspect-square bg-dark-bg rounded-lg border-2 border-dark-border 
-                                flex items-center justify-center mb-2 overflow-hidden">
-                    {photos[idx] ? (
-                      <img
-                        src={URL.createObjectURL(photos[idx]!)}
-                        alt={label}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">{label}</p>
+            {/* Preview of captured photo */}
+            <div className="flex justify-center mb-8">
+              <div className="text-center">
+                <div className="w-64 h-64 bg-dark-bg rounded-lg border-2 border-dark-border 
+                              flex items-center justify-center mb-2 overflow-hidden">
+                  {photos[0] ? (
+                    <img
+                      src={URL.createObjectURL(photos[0]!)}
+                      alt="Your photo"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <svg className="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  )}
                 </div>
-              ))}
+                <p className="text-sm text-gray-500">Front Photo</p>
+              </div>
             </div>
 
             <motion.button
@@ -341,7 +358,7 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               className="px-12 py-6 bg-transparent border-2 border-white text-white font-bold text-2xl rounded-xl
                        hover:bg-white hover:text-black transition-colors"
             >
-              📷 Start Taking Photos
+              📷 Take Photo
             </motion.button>
           </div>
         ) : (
@@ -354,25 +371,11 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               animate={{ opacity: 1, y: 0 }}
               className="text-center"
             >
-              <div className="flex items-center justify-center gap-2 mb-4">
-                {[0, 1, 2, 3, 4].map((idx) => (
-                  <div
-                    key={idx}
-                    className={`h-2 rounded-full transition-all ${
-                      idx < currentPhotoIndex
-                        ? 'w-8 bg-green-500'
-                        : idx === currentPhotoIndex
-                        ? 'w-12 bg-white'
-                        : 'w-8 bg-gray-700'
-                    }`}
-                  />
-                ))}
-              </div>
               <h2 className="text-4xl font-bold text-white mb-2">
-                {PHOTO_LABELS[currentPhotoIndex]} View
+                Look at the Camera
               </h2>
               <p className="text-lg text-gray-400">
-                Photo {currentPhotoIndex + 1} of 5
+                Position your face in the center
               </p>
             </motion.div>
 
@@ -402,17 +405,12 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
               
               {/* Direction instruction - BIG AND CLEAR */}
               <motion.div 
-                key={`instruction-${currentPhotoIndex}`}
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 className="absolute top-8 left-1/2 -translate-x-1/2 bg-white text-black 
                           px-8 py-4 rounded-full font-bold text-xl shadow-lg"
               >
-                {PHOTO_LABELS[currentPhotoIndex] === 'Front' && '👤 Look straight ahead'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Left' && '👈 Turn LEFT'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Right' && '👉 Turn RIGHT'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Up' && '👆 Look UP'}
-                {PHOTO_LABELS[currentPhotoIndex] === 'Down' && '👇 Look DOWN'}
+                👤 Look straight ahead
               </motion.div>
             </div>
 
@@ -444,19 +442,20 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
         )}
       </div>
 
-      {/* Context Input Section */}
+      {/* Initial Context Questions */}
       <div className="bg-dark-surface rounded-lg p-8 glow-border">
         <h2 className="text-3xl font-bold text-white mb-6">
-          Share Your Context
+          Tell Us About Yourself
         </h2>
         <p className="text-gray-400 mb-6">
-          Help your clone understand you better by sharing stories, habits, and reactions.
+          Help your clone understand you better by sharing some context.
         </p>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
-              Tell a story about yourself
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
+              Tell us a story about yourself
             </label>
             <textarea
               value={contexts.story}
@@ -469,7 +468,8 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
               Describe a daily habit
             </label>
             <textarea
@@ -483,7 +483,8 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-white mb-2">
+            <label className="block text-sm font-medium text-white mb-2 flex items-center gap-2">
+              <Smile className="w-4 h-4" />
               How do you typically react to challenges?
             </label>
             <textarea
@@ -505,29 +506,59 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
         className="fixed bottom-8 right-8 z-50 bg-dark-card border border-white/30 rounded-xl p-6 shadow-2xl w-96"
       >
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <span>🎤</span>
+          <Mic className="w-5 h-5" />
           <span>Voice Training</span>
         </h3>
         
         {/* Voice Training Progress */}
         <div>
           <div className="flex justify-between text-sm mb-2">
-            <span className="text-white font-medium">{voiceTraining.status}</span>
+            <span className={`font-medium ${voiceTraining.error ? 'text-red-400' : 'text-white'}`}>
+              {voiceTraining.status}
+            </span>
             <span className="text-white font-bold">{Math.round(voiceTraining.progress)}%</span>
           </div>
           <div className="w-full h-4 bg-dark-bg rounded-full overflow-hidden border border-white/30">
             <motion.div
-              className="h-full bg-white"
+              className={`h-full ${voiceTraining.error ? 'bg-red-400' : 'bg-white'}`}
               initial={{ width: 0 }}
               animate={{ width: `${voiceTraining.progress}%` }}
               transition={{ duration: 0.3 }}
             />
           </div>
-          <p className="mt-2 text-xs text-gray-400 text-center">
-            {voiceTraining.progress === 100
-              ? "✅ Voice model ready! Continue with photos below."
-              : "Training your custom S1 voice model..."}
-          </p>
+          
+          {voiceTraining.error ? (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-red-400 text-center flex items-center justify-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Error: {voiceTraining.error}
+              </p>
+              <p className="text-xs text-gray-400 text-center">
+                You can continue without voice training or re-record
+              </p>
+              {onReRecord && (
+                <button
+                  onClick={onReRecord}
+                  className="w-full py-2 px-4 bg-transparent border border-white/30 text-white text-sm rounded-lg
+                           hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Mic className="w-4 h-4" />
+                  Re-record Voice
+                </button>
+              )}
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-gray-400 text-center flex items-center justify-center gap-1">
+              {voiceTraining.progress === 100 ? (
+                <>
+                  <CheckCircle className="w-3 h-3 text-green-400" />
+                  Voice model ready! Continue with photos below.
+                </>
+              ) : (
+                "Training your custom S1 voice model..."
+              )}
+            </p>
+          )}
         </div>
       </motion.div>
 
@@ -555,7 +586,19 @@ export default function Uploader({ audioBlob, userId, voiceTraining, onComplete 
                    hover:bg-white hover:text-black transition-colors
                    disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {processingFace ? '🎭 Analyzing Your Face...' : (uploading ? '📤 Uploading...' : 'I Consent - Create My Clone')}
+          {processingFace ? (
+            <span className="flex items-center gap-2">
+              <Upload className="w-5 h-5 animate-pulse" />
+              Analyzing Your Face...
+            </span>
+          ) : uploading ? (
+            <span className="flex items-center gap-2">
+              <Upload className="w-5 h-5 animate-pulse" />
+              Uploading...
+            </span>
+          ) : (
+            'I Consent - Create My Clone'
+          )}
         </motion.button>
       </div>
 

@@ -1,9 +1,10 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { NextRequest, NextResponse } from 'next/server'
 
 /**
  * Create Supabase client for server components
- * Use this in server components and API routes
+ * Use this in server components (not API routes)
  */
 export function createServerSupabaseClient() {
   const cookieStore = cookies()
@@ -30,4 +31,40 @@ export function createServerSupabaseClient() {
       },
     }
   )
+}
+
+/**
+ * Create Supabase client for API route handlers
+ * Use this in app/api/ route.ts files
+ * Returns both the client and response object (with cookies set)
+ */
+export function createRouteHandlerClient(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          response = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
+
+  return { supabase, response }
 }

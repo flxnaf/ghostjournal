@@ -6,9 +6,11 @@
  */
 
 const requiredVars = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY',
+  'DATABASE_URL',
   'FISH_AUDIO_API_KEY',
   'ANTHROPIC_API_KEY',
-  'DATABASE_URL',
 ]
 
 const optionalVars = [
@@ -57,7 +59,8 @@ console.log('\n' + '='.repeat(50))
 if (hasErrors) {
   console.log('\n❌ Configuration errors found!')
   console.log('\nPlease update your .env file with the required values.')
-  console.log('See SETUP.md for instructions on obtaining API keys.\n')
+  console.log('For local development: Copy env.template to .env')
+  console.log('For Railway deployment: See RAILWAY_FIX.md for detailed instructions\n')
   process.exit(1)
 } else if (hasWarnings) {
   console.log('\n⚠️  Some optional variables are not set.')

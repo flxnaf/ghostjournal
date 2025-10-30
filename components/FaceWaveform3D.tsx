@@ -284,12 +284,31 @@ function Face3DModel({ audioData, isPlaying, emotion }: FaceWaveform3DProps) {
   const [loading, setLoading] = useState(true)
   
   useEffect(() => {
+    console.log('🔍 FaceWaveform3D: Checking sessionStorage for userId...')
+    console.log('   All sessionStorage keys:', Object.keys(sessionStorage))
+    
     const userId = sessionStorage.getItem('userId')
+    
+    console.log('🔍 Retrieved userId from sessionStorage:')
+    console.log('   Value:', userId)
+    console.log('   Type:', typeof userId)
+    console.log('   Length:', userId?.length || 0)
+    console.log('   First 20 chars:', userId?.substring(0, 20) || 'N/A')
+    
     if (!userId) {
       console.error('❌ No userId found in sessionStorage')
       console.error('   Available keys:', Object.keys(sessionStorage))
       setLoading(false)
       return
+    }
+    
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!uuidRegex.test(userId)) {
+      console.error('❌ INVALID UUID in sessionStorage!')
+      console.error('   Received:', userId)
+      console.error('   This looks like a username/string, not a UUID!')
+      // Continue anyway to see what happens
     }
     
     console.log('🎭 Fetching face data for userId:', userId)

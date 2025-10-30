@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { Mic, CheckCircle, BookOpen } from 'lucide-react'
 
 interface RecorderProps {
   onComplete: (audioBlob: Blob) => void
@@ -146,8 +147,9 @@ export default function Recorder({ onComplete }: RecorderProps) {
           animate={{ opacity: 1, y: 0 }}
           className="p-8 bg-dark-card rounded-xl border border-white/30 shadow-lg"
         >
-          <p className="text-white text-sm font-semibold mb-4">
-            📖 Please read this paragraph:
+          <p className="text-white text-sm font-semibold mb-4 flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Please read this paragraph:
           </p>
           <p className="text-white text-xl leading-relaxed">
             {recordingPrompt}
@@ -158,8 +160,9 @@ export default function Recorder({ onComplete }: RecorderProps) {
               animate={{ opacity: 1 }}
               className="mt-6 pt-6 border-t border-white/20"
             >
-              <p className="text-white text-sm">
-                🎤 Recording... Speak clearly and at a natural pace
+              <p className="text-white text-sm flex items-center justify-center gap-2">
+                <Mic className="w-4 h-4 animate-pulse" />
+                Recording... Speak clearly and at a natural pace
               </p>
             </motion.div>
           )}
@@ -194,8 +197,9 @@ export default function Recorder({ onComplete }: RecorderProps) {
             {isRecording ? countdown : '30'}
           </span>
                   {isRecording && canSubmit && (
-                    <div className="absolute -bottom-16 text-green-400 text-sm font-medium">
-                      ✅ Ready to submit (20s recorded)
+                    <div className="absolute -bottom-16 text-green-400 text-sm font-medium flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" />
+                      Ready to submit (20s recorded)
                     </div>
                   )}
         </div>
