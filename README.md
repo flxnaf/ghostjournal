@@ -9,6 +9,8 @@ An immersive dark-mode web application that creates an animated AI clone of you 
 - **Long-term memory** (ChromaDB)
 - **Optional autonomous deployment** (Fetch.ai Agentverse)
 
+**Try it live:** [replik.tech](https://replik.tech)
+
 ---
 
 ## Features
