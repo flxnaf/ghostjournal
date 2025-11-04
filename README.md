@@ -1,7 +1,6 @@
-# EchoSelf 🎭
+# Replik
 
-> **Your Interactive Voice + Visual AI Clone**  
-> Built for Cal Hacks 12.0
+> **Your Interactive Voice + Visual AI Clone**
 
 An immersive dark-mode web application that creates an animated AI clone of you using:
 - **Voice cloning** (Fish Audio API)
@@ -10,28 +9,41 @@ An immersive dark-mode web application that creates an animated AI clone of you 
 - **Long-term memory** (ChromaDB)
 - **Optional autonomous deployment** (Fetch.ai Agentverse)
 
+**Try it live:** [replik.tech](https://replik.tech)
+
 ---
 
-## ✨ Features
+## Features
 
-### 🎤 Voice Cloning
+### Voice Cloning
 Record 20 seconds of audio to create a personalized voice model using Fish Audio's state-of-the-art TTS technology.
 
-### 📸 Visual Clone
+### Visual Clone
 Capture 5 selfies (front, left, right, up, down) to generate a ghostly outline of your face rendered with live audio waveforms.
 
-### 🧠 Personality Model
+### Personality Model
 Share stories, habits, and reactions to build a personality profile powered by Claude that makes your clone authentically *you*.
 
-### 💾 Vector Memory
+### Vector Memory
 All conversations and contexts are stored in ChromaDB, enabling your clone to recall past interactions and maintain context.
 
-### 🤖 Autonomous Agent (Optional)
+### Autonomous Agent (Optional)
 Deploy your clone to Fetch.ai's Agentverse where it can operate independently, interact with other agents, and persist beyond your session.
+
+### Minecraft Integration
+Bring your digital twins into Minecraft with full voice support! Import twins from the web app, spawn them as NPCs, and chat with them in-game. Supports both command-based (MVP) and GUI-based (Advanced) modes.
+
+**See [MINECRAFT_SETUP.md](./MINECRAFT_SETUP.md) for full guide.**
 
 ---
 
-## 🛠️ Tech Stack
+## Documentation
+
+For detailed setup guides, architecture documentation, and implementation notes, see the [docs/](./docs/) folder.
+
+---
+
+## Tech Stack
 
 ### Frontend
 - **Next.js 14** (App Router)
@@ -53,7 +65,7 @@ Deploy your clone to Fetch.ai's Agentverse where it can operate independently, i
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+ and npm/yarn
@@ -63,7 +75,7 @@ Deploy your clone to Fetch.ai's Agentverse where it can operate independently, i
 
 ```bash
 git clone <your-repo-url>
-cd CalHacks
+cd replik
 npm install
 ```
 
@@ -120,7 +132,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🔑 API Keys Setup
+## API Keys Setup
 
 ### Fish Audio API
 1. Sign up at [fish.audio](https://fish.audio)
@@ -153,10 +165,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-CalHacks/
+replik/
 ├── app/
 │   ├── api/                    # API routes
 │   │   ├── upload/            # Media upload handler
@@ -197,7 +209,7 @@ CalHacks/
 
 ---
 
-## 🎨 Visual Design
+## Visual Design
 
 ### Color Palette
 - **Background:** `#0a0a0f` (dark-bg)
@@ -215,7 +227,7 @@ CalHacks/
 
 ---
 
-## 🔄 User Flow
+## User Flow
 
 1. **Record Voice** (20 seconds)
    - Visualize audio levels in real-time
@@ -237,7 +249,7 @@ CalHacks/
 
 ---
 
-## 🧪 Development Notes
+## Development Notes
 
 ### Mock Modes
 The app gracefully degrades if API keys are missing:
@@ -258,7 +270,7 @@ Currently uses mock elliptical outlines. For production:
 
 ---
 
-## 📦 Deployment
+## Deployment
 
 ### Vercel (Recommended)
 ```bash
@@ -289,17 +301,7 @@ For production, deploy ChromaDB separately:
 
 ---
 
-## 🎯 Hackathon Tracks
-
-This project qualifies for:
-- **Fish Audio Track:** Voice cloning & TTS implementation
-- **Anthropic Track:** Claude-powered personality modeling
-- **Fetch.ai Track:** Agent deployment on Agentverse
-- **Best Overall:** Innovative use of multiple AI technologies
-
----
-
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Audio Recording Issues
 - **Firefox:** May require HTTPS or localhost
@@ -320,7 +322,7 @@ This project qualifies for:
 
 ---
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 - [ ] Multi-language voice cloning
 - [ ] 3D face model rendering
@@ -333,43 +335,34 @@ This project qualifies for:
 
 ---
 
-## 📄 License
+## License
 
-MIT License - Built for Cal Hacks 12.0
+MIT License
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
-This is a hackathon project, but contributions are welcome!
+Contributions are welcome!
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
 
 ---
 
-## 👥 Team
-
-Built with ❤️ by [Your Team Name]
-
----
-
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Fish Audio** - Voice cloning technology
 - **Anthropic** - Claude API
 - **Chroma** - Vector database
 - **Fetch.ai** - Agent infrastructure
-- **Cal Hacks** - Amazing hackathon opportunity
 
 ---
 
-## 📞 Support
+## Support
 
 For issues or questions:
 - Open a GitHub issue
 - Check API documentation
 - Review troubleshooting section
-
-**Happy Hacking! 🚀**
 

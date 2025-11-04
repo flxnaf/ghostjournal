@@ -3,7 +3,25 @@
  * Handles file uploads for audio recordings and photos
  */
 
-import { createClient } from './supabase'
+import { createClient as createBrowserClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Create admin client with service role key (bypasses RLS)
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase credentials for admin operations')
+  }
+  
+  return createBrowserClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
 
 export const STORAGE_BUCKETS = {
   AUDIO: 'audio-recordings',
@@ -14,10 +32,12 @@ export const STORAGE_BUCKETS = {
  * Upload audio file to Supabase Storage
  * @param userId - User's UUID from Supabase auth
  * @param audioFile - Audio file blob
+ * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Public URL of uploaded file
  */
 export async function uploadAudio(userId: string, audioFile: Blob): Promise<string> {
-  const supabase = createClient()
+  // Use admin client with service role key (bypasses RLS)
+  const supabase = createAdminClient()
 
   const fileName = `${userId}/recording-${Date.now()}.webm`
 
@@ -29,7 +49,7 @@ export async function uploadAudio(userId: string, audioFile: Blob): Promise<stri
     })
 
   if (error) {
-    console.error('Error uploading audio:', error)
+    console.error('❌ Supabase Storage error:', error)
     throw new Error(`Failed to upload audio: ${error.message}`)
   }
 
@@ -42,10 +62,36 @@ export async function uploadAudio(userId: string, audioFile: Blob): Promise<stri
 }
 
 /**
+ * Fallback: Upload audio to local filesystem (for development/Railway)
+ */
+async function uploadAudioLocal(userId: string, audioFile: Blob): Promise<string> {
+  const { writeFile, mkdir } = await import('fs/promises')
+  const { join } = await import('path')
+  
+  const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+  const fileName = `recording-${Date.now()}.webm`
+  const filePath = join(uploadDir, fileName)
+  
+  // Create directory if it doesn't exist
+  await mkdir(uploadDir, { recursive: true })
+  
+  // Convert Blob to Buffer
+  const arrayBuffer = await audioFile.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  
+  // Write file
+  await writeFile(filePath, buffer)
+  
+  // Return relative URL
+  return `/uploads/${userId}/${fileName}`
+}
+
+/**
  * Upload photo to Supabase Storage
  * @param userId - User's UUID from Supabase auth
  * @param photoFile - Photo file blob
  * @param index - Photo index (for multiple photos)
+ * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Public URL of uploaded file
  */
 export async function uploadPhoto(
@@ -53,7 +99,8 @@ export async function uploadPhoto(
   photoFile: Blob,
   index: number
 ): Promise<string> {
-  const supabase = createClient()
+  // Use admin client with service role key (bypasses RLS)
+  const supabase = createAdminClient()
 
   const fileName = `${userId}/photo-${index}-${Date.now()}.jpg`
 
@@ -65,7 +112,7 @@ export async function uploadPhoto(
     })
 
   if (error) {
-    console.error('Error uploading photo:', error)
+    console.error('❌ Supabase Storage error:', error)
     throw new Error(`Failed to upload photo: ${error.message}`)
   }
 
@@ -78,9 +125,35 @@ export async function uploadPhoto(
 }
 
 /**
+ * Fallback: Upload photo to local filesystem
+ */
+async function uploadPhotoLocal(userId: string, photoFile: Blob, index: number): Promise<string> {
+  const { writeFile, mkdir } = await import('fs/promises')
+  const { join } = await import('path')
+  
+  const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+  const fileName = `photo-${index}-${Date.now()}.jpg`
+  const filePath = join(uploadDir, fileName)
+  
+  // Create directory if it doesn't exist
+  await mkdir(uploadDir, { recursive: true })
+  
+  // Convert Blob to Buffer
+  const arrayBuffer = await photoFile.arrayBuffer()
+  const buffer = Buffer.from(arrayBuffer)
+  
+  // Write file
+  await writeFile(filePath, buffer)
+  
+  // Return relative URL
+  return `/uploads/${userId}/${fileName}`
+}
+
+/**
  * Upload multiple photos to Supabase Storage
  * @param userId - User's UUID from Supabase auth
  * @param photoFiles - Array of photo file blobs
+ * @param supabaseClient - Optional authenticated Supabase client (for server-side calls)
  * @returns Array of public URLs
  */
 export async function uploadPhotos(
@@ -99,7 +172,7 @@ export async function uploadPhotos(
  * @param userId - User's UUID from Supabase auth
  */
 export async function deleteAudio(userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   // List all audio files for this user
   const { data: files, error: listError } = await supabase.storage
@@ -129,7 +202,7 @@ export async function deleteAudio(userId: string): Promise<void> {
  * @param userId - User's UUID from Supabase auth
  */
 export async function deletePhotos(userId: string): Promise<void> {
-  const supabase = createClient()
+  const supabase = createAdminClient()
 
   // List all photo files for this user
   const { data: files, error: listError } = await supabase.storage

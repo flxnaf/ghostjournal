@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createRouteHandlerClient } from '@/lib/supabase-server'
 import { uploadAudio } from '@/lib/storage'
 
 const prisma = new PrismaClient()
@@ -13,10 +13,11 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user from Supabase
-    const supabase = createServerSupabaseClient()
+    const { supabase } = createRouteHandlerClient(request)
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !authUser) {
+      console.error('Auth error in create-user:', authError)
       return NextResponse.json(
         { error: 'Unauthorized - please log in' },
         { status: 401 }
@@ -39,18 +40,20 @@ export async function POST(request: NextRequest) {
       update: {
         email: authUser.email,
         name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+        username: authUser.user_metadata?.username,
       },
       create: {
         id: authUser.id,
         email: authUser.email,
         name: authUser.user_metadata?.name || authUser.user_metadata?.full_name,
+        username: authUser.user_metadata?.username,
         photoUrls: '[]',
       }
     })
 
     console.log('✅ User created/updated:', user.id)
 
-    // Upload audio to Supabase Storage
+    // Upload audio to Supabase Storage (uses service role key internally)
     console.log('📤 Uploading audio to Supabase Storage...')
     const audioUrl = await uploadAudio(authUser.id, audio)
     console.log('✅ Audio uploaded:', audioUrl)
@@ -71,10 +74,21 @@ export async function POST(request: NextRequest) {
       message: 'User created with audio'
     })
 
-  } catch (error) {
-    console.error('Create user error:', error)
+  } catch (error: any) {
+    console.error('❌ Create user error:', error)
+    console.error('   Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+      name: error.name
+    })
     return NextResponse.json(
-      { error: 'User creation failed' },
+      { 
+        error: 'User creation failed', 
+        details: error.message,
+        code: error.code,
+        meta: error.meta
+      },
       { status: 500 }
     )
   }

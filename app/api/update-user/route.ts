@@ -11,7 +11,7 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, faceContours, contexts } = body
+    const { userId, faceContours, contexts, photoUrl } = body
 
     if (!userId) {
       return NextResponse.json(
@@ -32,8 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    console.log('🎭 Updating user with face model and contexts:', userId)
+    console.log('🎭 Updating user with face model, photo, and contexts:', userId)
     console.log(`   Received ${faceContours.length} face contours`)
+    console.log(`   Profile photo URL: ${photoUrl || 'None'}`)
 
     // Log sample contour data to verify it's not defaulting
     const jawline = faceContours.find((c: any) => c.name === 'jawline')
@@ -70,21 +71,29 @@ export async function POST(request: NextRequest) {
       console.error('   ⚠️  No hair contour found!')
     }
 
-    // Store face contours in database
+    // Store face contours and photo URL in database
     await prisma.user.update({
       where: { id: userId },
       data: {
         faceData: JSON.stringify({ contours: faceContours }),
+        photoUrls: photoUrl ? JSON.stringify([photoUrl]) : null,
       }
     })
 
-    console.log('✅ Face model stored in database')
+    console.log('✅ Face model and photo stored in database')
 
     // Store contexts as memories
+    console.log('💾 Storing initial contexts as memories...')
+    console.log('   Contexts object:', contexts)
+    console.log('   Contexts keys:', contexts ? Object.keys(contexts) : 'NULL')
+    
     if (contexts) {
+      let savedCount = 0
       for (const [category, content] of Object.entries(contexts)) {
+        console.log(`   Processing "${category}":`, content ? `${(content as string).length} chars` : 'EMPTY')
+        
         if (content && typeof content === 'string' && content.trim()) {
-          await prisma.memory.create({
+          const memory = await prisma.memory.create({
             data: {
               userId: userId,
               content: content as string,
@@ -92,16 +101,27 @@ export async function POST(request: NextRequest) {
               embedding: '',
             }
           })
+          console.log(`   ✅ Saved "${category}" as memory:`, memory.id.substring(0, 20))
+          savedCount++
+        } else {
+          console.log(`   ⚠️ Skipped "${category}" (empty or invalid)`)
         }
       }
-      console.log('✅ Contexts stored as memories')
+      console.log(`✅ Stored ${savedCount} contexts as memories`)
+    } else {
+      console.log('⚠️ No contexts provided!')
     }
 
     console.log('✅ User updated with face model and contexts')
 
     // Process personality in background
+    // Use relative URL for internal API calls (works on both localhost and Railway)
     setTimeout(() => {
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/personality`, {
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
+      fetch(`${baseUrl}/api/personality`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })

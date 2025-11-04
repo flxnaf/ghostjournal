@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import Anthropic from '@anthropic-ai/sdk'
 import axios from 'axios'
-import { writeFile, readFile } from 'fs/promises'
+import { writeFile, readFile, mkdir } from 'fs/promises'
 import { join } from 'path'
+import { createRouteHandlerClient } from '@/lib/supabase-server'
 
 const prisma = new PrismaClient()
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     console.log('📥 Request body:', { userId: body.userId, message: body.message?.substring(0, 50) })
-    
+
     const { userId, message, conversationHistory = [] } = body
 
     if (!userId || !message) {
@@ -33,20 +34,96 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // AUTHENTICATION: Support Supabase session, API key, or browsing public clones
+    const apiKey = request.headers.get('X-API-Key')
+    const validApiKey = process.env.MINECRAFT_API_KEY
+
+    // Try Supabase authentication first (for web users)
+    let isAuthenticated = false
+    let authUserId: string | null = null
+    try {
+      const { supabase } = createRouteHandlerClient(request)
+      const { data: { user: authUser }, error } = await supabase.auth.getUser()
+
+      if (authUser) {
+        authUserId = authUser.id
+        // Allow authenticated users to chat with their own clone
+        if (authUser.id === userId) {
+          console.log('✅ Authenticated via Supabase session (own clone)')
+          isAuthenticated = true
+        } else {
+          // Check if target user's clone is public
+          const targetUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { isPublic: true }
+          })
+          if (targetUser?.isPublic) {
+            console.log('✅ Authenticated user browsing public clone')
+            isAuthenticated = true
+          }
+        }
+      }
+    } catch (authError) {
+      console.log('⚠️ Supabase auth check failed, trying API key...')
+    }
+
+    // Fallback to API key authentication (for Minecraft mod)
+    if (!isAuthenticated && apiKey && validApiKey && apiKey === validApiKey) {
+      console.log('✅ Authenticated via API key')
+      isAuthenticated = true
+    }
+
+    // If neither authentication method worked, reject the request
+    if (!isAuthenticated) {
+      console.error('❌ Authentication failed')
+      return NextResponse.json(
+        {
+          error: 'Unauthorized',
+          details: 'You must be authenticated to use this endpoint. Either log in or provide a valid API key.'
+        },
+        { status: 401 }
+      )
+    }
+
     // Get user data
     console.log('🔍 Looking up user:', userId)
-    const user = await prisma.user.findUnique({ where: { id: userId } })
+    console.log('   Full user ID:', userId)
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        voiceModelId: true,
+        audioUrl: true,
+        personalityData: true,
+        name: true,
+        email: true,
+        username: true
+      }
+    })
+
     if (!user) {
       console.error('❌ User not found:', userId)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
+
     console.log('✅ User found')
+    console.log('   User name:', user.name || user.username)
+    console.log('   User email:', user.email)
+    console.log('═══════════════════════════════════════════')
+    console.log('🎤 VOICE MODEL CHECK FROM DATABASE:')
+    console.log('   voiceModelId:', user.voiceModelId || 'NULL')
+    console.log('   audioUrl:', user.audioUrl || 'NULL')
+    console.log('   voiceModelId type:', typeof user.voiceModelId)
+    console.log('   voiceModelId length:', user.voiceModelId?.length || 0)
+    console.log('   First 50 chars:', user.voiceModelId?.substring(0, 50) || 'N/A')
+    console.log('═══════════════════════════════════════════')
 
     // Check for keyword commands to update context
     const lowerMessage = message.toLowerCase()
-    
+
     // Handle "i have new stories:" or similar context updates
-    if (lowerMessage.includes('i have new stor') || lowerMessage.includes('new story:') || 
+    if (lowerMessage.includes('i have new stor') || lowerMessage.includes('new story:') ||
         lowerMessage.includes('i have new habit') || lowerMessage.includes('new habit:') ||
         lowerMessage.includes('i have new reaction') || lowerMessage.includes('new reaction:')) {
       
@@ -68,8 +145,13 @@ export async function POST(request: NextRequest) {
       })
       
       // Reprocess personality in background
+      // Use Railway domain for internal API calls (works on both localhost and Railway)
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
       setTimeout(() => {
-        fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/personality`, {
+        fetch(baseUrl + '/api/personality', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId })
@@ -84,9 +166,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Get personality data
+    console.log('🎭 Loading personality data...')
+    console.log('   Raw personalityData:', user.personalityData ? 'Present' : 'NULL')
     const personality = user.personalityData 
       ? JSON.parse(user.personalityData) 
       : null
+    console.log('   Parsed personality:', personality ? 'Present' : 'NULL')
+    if (personality) {
+      console.log('   Personality keys:', Object.keys(personality))
+      console.log('   Personality sample:', JSON.stringify(personality).substring(0, 200))
+    }
 
     // Query relevant memories with timeout
     console.log('🧠 Querying memories...')
@@ -95,7 +184,14 @@ export async function POST(request: NextRequest) {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 second timeout
       
-      const memoryResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/memory`, {
+      // Use Railway domain for internal API calls
+      const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+        : 'http://localhost:3000'
+      
+      console.log('   Memory API URL:', baseUrl + '/api/memory')
+      
+      const memoryResponse = await fetch(baseUrl + '/api/memory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -156,11 +252,17 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
 
     // Generate response with Claude
     console.log('🤖 Generating Claude response...')
+    console.log('   Personality prompt length:', personalityPrompt.length)
+    console.log('   Using personality:', personality ? 'YES' : 'NO (default prompt)')
+    console.log('   Memory context length:', memoryContext.length)
+    console.log('   Has memories:', memories.length > 0)
+    
     const responseText = await generateResponse(
       message,
       conversationHistory,
       personalityPrompt,
-      memoryContext
+      memoryContext,
+      user.name || user.username || 'User'
     )
     console.log('✅ Claude response generated:', responseText.substring(0, 100))
 
@@ -186,6 +288,28 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
         audioUrl
       }
     })
+      
+      // Store in memory asynchronously (don't block response)
+      if (message.length > 50) {
+        console.log('💾 Storing in memory (background)...')
+        // Use Railway domain for internal API calls
+        const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+          ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+          : 'http://localhost:3000'
+        
+        const memoryContent = 'User asked: ' + message + '. Response: ' + responseText
+        fetch(baseUrl + '/api/memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            userId, 
+            action: 'add', 
+            content: memoryContent
+          })
+        })
+          .then(() => console.log('✅ Stored in memory'))
+          .catch(err => console.warn('⚠️ Memory storage failed:', err))
+      }
 
     console.log('🎉 Response complete!')
     const responseData = {
@@ -194,22 +318,6 @@ Remember: You ARE them based on what THEY told you about themselves, not based o
       success: true
     }
     console.log('📤 Sending to frontend:', JSON.stringify(responseData).substring(0, 200))
-    
-    // Store in memory asynchronously (don't block response)
-    if (message.length > 50) {
-      console.log('💾 Storing in memory (background)...')
-              fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/memory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId, 
-          action: 'add', 
-          content: `User asked: ${message}. Response: ${responseText}` 
-        })
-      })
-        .then(() => console.log('✅ Stored in memory'))
-        .catch(err => console.warn('⚠️ Memory storage failed:', err))
-    }
     
     return NextResponse.json(responseData)
 
@@ -231,7 +339,8 @@ async function generateResponse(
   message: string,
   conversationHistory: any[],
   personalityPrompt: string,
-  memoryContext: string
+  memoryContext: string,
+  userName: string
 ): Promise<string> {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
@@ -260,31 +369,40 @@ async function generateResponse(
       content: message
     })
 
-    const systemPrompt = `${personalityPrompt}
+    const systemPrompt = `YOUR NAME IS: ${userName}
 
-${memoryContext ? `Relevant context from past conversations:\n${memoryContext}\n` : ''}
+You ARE ${userName} responding naturally in a conversation. Here's what you know about yourself:
 
-CRITICAL INSTRUCTIONS - YOU ARE THIS PERSON, NOT AN AI ASSISTANT:
-- You ARE this person. Respond EXACTLY as they would based on the context THEY provided.
-- This is NOT a roleplay - you ARE them. Their personality is YOUR personality.
-- Match their EXACT tone, mood, vocabulary, quirks from THEIR actual context.
-- ONLY adopt negative traits (anger/cynicism/sarcasm/pessimism) if THEY explicitly described themselves that way.
-- ONLY adopt positive traits (optimism/enthusiasm/energy) if THEY explicitly described themselves that way.
-- If they didn't specify a mood/tone, be NEUTRAL and conversational (balanced, not extreme in any direction).
-- DO NOT add AI disclaimers or explanations - you're having a natural conversation as them.
-- Use their speech patterns, slang, and expressions naturally.
-- Keep responses 2-4 sentences, conversational and authentic.
-- NO PROFANITY - express strong emotions through tone and actions (*scoffs*, *groans*, *sighs*).
-- Mirror what THEY actually said about themselves, not assumptions.
+${personalityPrompt}
 
-Remember: You're based on what they TOLD you, not stereotypes or assumptions.`
+${memoryContext ? `Background context (reference when relevant, don't dump all of it):\n${memoryContext}\n` : ''}
+
+HOW TO RESPOND NATURALLY:
+1. Keep responses SHORT (1-2 sentences unless asked for details)
+2. ONLY mention specific context when directly relevant to the question
+   - "Hi" → Just greet back naturally with your personality/mood
+   - "How are you?" → Brief status that matches your emotional baseline
+   - "Tell me about X" → THEN you can elaborate on that specific topic
+   - "What's your name?" → "I'm ${userName}" (use your actual name!)
+3. Use context to inform your TONE and PERSONALITY, not to recite your life story
+4. Be conversational and natural - don't try to demonstrate all your knowledge at once
+5. Match your emotional baseline from your context (calm/energetic/pessimistic/etc)
+6. Use your vocabulary and speech patterns, but don't force them
+7. NO AI disclaimers - you're just chatting as yourself
+
+Example responses:
+- Input: "Hey" → "Hey! *smiles* What's up?" (not a life story)
+- Input: "What do you do?" → "I'm into [topic from context]" (brief, natural)
+- Input: "Tell me about your hobbies" → NOW elaborate on relevant hobbies from context
+
+Remember: Be authentic, brief, and only elaborate when asked. Context is for reference, not recitation.`
 
     console.log('📤 Calling Claude API...')
     console.log('   Messages count:', messages.length)
 
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 300,
+      max_tokens: 150, // Shorter to encourage brief responses
       system: systemPrompt,
       messages: messages as any
     })
@@ -456,30 +574,88 @@ async function generateVoice(
   console.log('🧹 Cleaned text:', cleanedText.substring(0, 100))
 
   try {
-    console.log('📤 Calling Fish Audio TTS with trained model...')
-    
-    // Get user's voice model ID
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-    
-    // Determine which reference to use
-    let referenceId = '802e3bc2b27e49c2995d23ef70e6ac89' // Default voice
-    
-    if (voiceModelId && !voiceModelId.startsWith('mock_')) {
-      // Use the trained S1 model (HIGH QUALITY)
-      referenceId = voiceModelId
-      console.log('✅ Using trained S1 voice model:', referenceId.substring(0, 20))
-    } else {
-      console.log('⚠️ Using default voice (no trained model yet)')
-    }
-    
-    // Create TTS request with trained model
+    console.log('📤 Preparing Fish Audio TTS payload...')
+
+    const DEFAULT_VOICE_ID = process.env.FISH_DEFAULT_VOICE_ID || 'af1ddb5dc0e644ebb16b58ed466e27c6'
+    const DEFAULT_REFERENCE_TEXT = process.env.FISH_REFERENCE_TEXT ||
+      'I walk through the park every morning before work. The trees sway gently in the breeze, and birds sing their morning songs. Sometimes I stop to watch a squirrel gather nuts or see dew glistening on spider webs. These quiet moments help me start my day with a clear mind.'
+
+    const userRecord = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        audioUrl: true,
+        voiceModelId: true,
+        name: true
+      }
+    })
+
+    console.log('   DB voiceModelId:', userRecord?.voiceModelId || 'NULL')
+    console.log('   DB audioUrl:', userRecord?.audioUrl || 'NULL')
+
+    const trainedVoiceId = (() => {
+      const candidate = voiceModelId || userRecord?.voiceModelId || null
+      if (candidate && !candidate.startsWith('mock_')) {
+        return candidate
+      }
+      return null
+    })()
+
     const FormData = require('form-data')
     const formData = new FormData()
-    
-    formData.append('text', cleanedText) // Use cleaned text
-    formData.append('reference_id', referenceId) // Trained model ID or default
+
+    formData.append('text', cleanedText)
     formData.append('format', 'mp3')
-    
+
+    let usingReferenceAudio = false
+
+    if (trainedVoiceId) {
+      console.log('✅ Using trained voice model for TTS:', trainedVoiceId.substring(0, 20))
+      formData.append('reference_id', trainedVoiceId)  // FIXED: Use reference_id for trained models
+    } else {
+      console.log('⚠️ No trained voice model detected, attempting on-the-fly cloning')
+
+      const audioSource = userRecord?.audioUrl || null
+
+      if (audioSource) {
+        try {
+          console.log('🎤 Fetching reference audio for cloning...')
+          let referenceBuffer: Buffer | null = null
+
+          if (audioSource.startsWith('http')) {
+            const download = await axios.get(audioSource, {
+              responseType: 'arraybuffer',
+              timeout: 15000
+            })
+            referenceBuffer = Buffer.from(download.data)
+          } else {
+            const localPath = join(process.cwd(), 'public', audioSource)
+            referenceBuffer = await readFile(localPath)
+          }
+
+          if (referenceBuffer && referenceBuffer.length > 0) {
+            formData.append('reference_audio', referenceBuffer, {
+              filename: 'reference.webm',
+              contentType: 'audio/webm'
+            })
+            formData.append('reference_text', DEFAULT_REFERENCE_TEXT)
+            usingReferenceAudio = true
+            console.log('✅ Added reference audio for on-the-fly cloning (bytes:', referenceBuffer.length, ')')
+          } else {
+            console.warn('⚠️ Reference audio buffer empty, skipping cloning payload')
+          }
+        } catch (referenceError: any) {
+          console.warn('⚠️ Failed to load reference audio:', referenceError?.message || referenceError)
+        }
+      } else {
+        console.log('⚠️ No stored reference audio found for user; using fallback voice')
+      }
+
+      if (!usingReferenceAudio) {
+        console.log('🎙️ Falling back to default Fish voice ID:', DEFAULT_VOICE_ID)
+        formData.append('voice_id', DEFAULT_VOICE_ID)
+      }
+    }
+
     const response = await axios.post(
       'https://api.fish.audio/v1/tts',
       formData,
@@ -493,18 +669,66 @@ async function generateVoice(
       }
     )
 
-    // Save audio file
-    const filename = `response_${Date.now()}.mp3`
-    const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
-    const audioPath = join(uploadDir, filename)
+    // Upload audio to Supabase Storage
+    const timestamp = Date.now()
+    const filename = `${userId}/response_${timestamp}.mp3`
+    const audioBuffer = Buffer.from(response.data)
     
-    await writeFile(audioPath, Buffer.from(response.data))
+    console.log('📤 Uploading audio to Supabase Storage...')
+    console.log('   Filename:', filename)
+    console.log('   Size:', audioBuffer.length, 'bytes')
+    
+    // Check if Supabase is configured
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.warn('⚠️ Supabase not configured - saving to local filesystem')
+      const uploadDir = join(process.cwd(), 'public', 'uploads', userId)
+      const audioPath = join(uploadDir, `response_${timestamp}.mp3`)
+      await mkdir(uploadDir, { recursive: true })
+      await writeFile(audioPath, audioBuffer)
+      return `/uploads/${userId}/response_${timestamp}.mp3`
+    }
+    
+    // Create admin Supabase client (bypasses RLS)
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+    
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from('audio-recordings')
+      .upload(filename, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true,
+      })
 
-    return `/uploads/${userId}/${filename}`
+    if (error) {
+      console.error('❌ Supabase Storage error:', error)
+      throw new Error(`Failed to upload audio: ${error.message}`)
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('audio-recordings')
+      .getPublicUrl(filename)
+
+    console.log('✅ Audio uploaded to Supabase:', urlData.publicUrl)
+    return urlData.publicUrl
 
   } catch (error: any) {
-    console.error('Fish Audio TTS error:', error.response?.data || error.message)
+    console.error('❌ Fish Audio TTS error:', error)
+    console.error('   Status:', error.response?.status)
+    console.error('   Data:', error.response?.data)
+    console.error('   Message:', error.message)
+    
+    // Return empty string - will fallback to browser TTS
+    console.warn('⚠️ Falling back to browser TTS')
     return ''
   }
 }
-

@@ -22,8 +22,6 @@ const nextConfig = {
     
     return config;
   },
-  // Mark chromadb as server-only
-  serverComponentsExternalPackages: ['chromadb'],
 }
 
 module.exports = nextConfig

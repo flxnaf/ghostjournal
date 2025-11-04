@@ -1,61 +1,65 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String   @id @db.Uuid
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
-  // Media
-  audioUrl      String?
-  photoUrls     String? // JSON string of photo URLs array
-  
-  // AI Models
-  voiceModelId  String?
-  personalityData String? // JSON
-  faceData      String? // JSON string of 3D face contours from MediaPipe
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @default(now()) @updatedAt
+  audioUrl           String?
+  photoUrls          String?
+  voiceModelId       String?
+  personalityData    String?
+  faceData           String?
   chromaCollectionId String?
-  
+
   // Fetch.ai
   fetchAgentId  String?
-  
+
   // Metadata
   name          String?
   email         String?
-  
+  username      String?  @unique
+  bio           String?
+  isPublic      Boolean  @default(false)  // Whether clone appears in browse/search
+  minecraftUsername  String?  // Minecraft username for skin retrieval
+
+  // Consent (for data usage)
+  consentAudio        Boolean @default(false)  // Consent to save audio recordings
+  consentChat         Boolean @default(false)  // Consent to save chat history
+  consentContext      Boolean @default(false)  // Consent to save stories/context
+  consentFaceData     Boolean @default(false)  // Consent to save face photos/3D model
+  consentTimestamp    DateTime?               // When consent was given
+
   // Relations
   memories      Memory[]
   conversations Conversation[]
 }
 
 model Memory {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   createdAt DateTime @default(now())
-  userId    String
+  userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   content   String
-  embedding String   // Store embedding ID from Chroma
-  category  String?  // stories, habits, reactions, etc.
+  embedding String
+  category  String?
 }
 
 model Conversation {
-  id        String   @id @default(cuid())
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   createdAt DateTime @default(now())
-  userId    String
+  userId    String   @db.Uuid
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   role      String   // user or assistant
   content   String
   audioUrl  String?
 }
-

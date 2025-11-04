@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createRouteHandlerClient } from '@/lib/supabase-server'
 import { uploadPhotos } from '@/lib/storage'
 
 const prisma = new PrismaClient()
@@ -8,10 +8,11 @@ const prisma = new PrismaClient()
 export async function POST(request: NextRequest) {
   try {
     // Get authenticated user from Supabase
-    const supabase = createServerSupabaseClient()
+    const { supabase } = createRouteHandlerClient(request)
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !authUser) {
+      console.error('Auth error in upload:', authError)
       return NextResponse.json(
         { error: 'Unauthorized - please log in' },
         { status: 401 }
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Upload photos to Supabase Storage
+    // Upload photos to Supabase Storage (uses service role key internally)
     console.log('📤 Uploading photos to Supabase Storage...')
     const photoUrls = await uploadPhotos(authUser.id, photoBlobs)
     console.log('✅ Photos uploaded:', photoUrls)
