@@ -1,4 +1,4 @@
-# EchoSelf
+# Replik
 
 > **Your Interactive Voice + Visual AI Clone**
 
